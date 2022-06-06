@@ -1,6 +1,6 @@
 - name: A
-github: a@a
+  github: a@a
 - name: B
-github: b@b
+  github: b@b
 - name: C
-github: c@c
+  github: c@c
