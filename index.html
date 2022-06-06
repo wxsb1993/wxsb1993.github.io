@@ -19,7 +19,7 @@
             <th>E-mail address</th>
         </tr>
         </thead>
-        <tbody>
+        <tbody id="songList">
         <tr>
             <td>John Lilki</td>
             <td>September 14, 2013</td>
@@ -41,5 +41,21 @@
 <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
 <link rel="stylesheet" href="https://cdn.bootcss.com/semantic-ui/2.3.1/semantic.min.css">
 <link rel="stylesheet" href="https://cdn.bootcss.com/semantic-ui/2.3.1/semantic.min.js">
+<script>
+    $(document).ready(function(){
+        getData();
+    });
+    function getData() {
+        $("#songList").empty();
+        for (var i = 0; i < 10; i++) {
+            var $trTemp = $("<tr></tr>");
+            $trTemp.append("<td>" + i + "</td>");
+            $trTemp.append("<td>" + i + "</td>");
+            $trTemp.append("<td>" + i + "</td>");
+            $("#songList").append($trTemp);
+            $trTemp.appendTo("#songList");
+        }
+    }
+</script>
 </body>
 </html>
