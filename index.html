@@ -27,6 +27,11 @@
 <link rel="stylesheet" href="https://cdn.bootcss.com/semantic-ui/2.3.1/semantic.min.css">
 <link rel="stylesheet" href="https://cdn.bootcss.com/semantic-ui/2.3.1/semantic.min.js">
 <script>
+    let data = [
+        {anchor:"张惠妹",name:"如果你也听说",tag:"流行;国语"},
+        {anchor:"张惠妹",name:"连名带姓",tag:"流行;国语"},
+        {anchor:"张惠妹",name:"人质",tag:"流行;国语"}
+    ];
     $(document).ready(function(){
         getData();
     });
@@ -41,12 +46,6 @@
             $trTemp.appendTo("#songList");
         }
     }
-
-    let data = [
-        {anchor:"张惠妹",name:"如果你也听说",tag:"流行;国语"},
-        {anchor:"张惠妹",name:"连名带姓",tag:"流行;国语"},
-        {anchor:"张惠妹",name:"人质",tag:"流行;国语"}
-        ];
 </script>
 </body>
 </html>
