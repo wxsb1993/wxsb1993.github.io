@@ -9,13 +9,13 @@
 <body>
 <div class="html ui top right attached blue segment">
     <div class="ui search">
-        <input id="songKey" class="prompt" type="text" placeholder="Common passwords...">
+        <input id="songKey" class="prompt" type="text" placeholder="输入歌名、歌手或标签">
     </div>
 
     <table class="ui orange large table">
         <thead>
         <tr>
-            <th>歌名</th>
+            <th class="three column">歌名</th>
             <th>歌手</th>
             <th>标签</th>
         </tr>
@@ -37,7 +37,7 @@
         for (let i = 0; i < data.length; i++) {
             if (needFilter) {
                 songKey = songKey.trim();
-                if(data[i].name.indexOf(songKey) < 0 && data[i].anchor.indexOf(songKey) < 0 && data[i].tag.indexOf(songKey) < 0) {
+                if(data[i].name.indexOf(songKey) < 0 && data[i].anchor.indexOf(songKey) < 0 && data[i].tag.split(";").indexOf(songKey) < 0) {
                     continue;
                 }
             }
