@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="shortcut icon" href="https://bkimg.cdn.bcebos.com/pic/a6efce1b9d16fdfa000d2022b98f8c5495ee7b9d">
-    <title>歌单歌单</title>
+    <link rel="shortcut icon" href="https://c-ssl.dtstatic.com/uploads/item/202009/10/20200910102903_zm3BN.thumb.1000_0.jpeg">
+    <title>测试歌单</title>
 </head>
 <body>
 <div class="html ui top right attached blue segment">
@@ -37,8 +37,8 @@
         $("#songList").empty();
         for (let i = 0; i < data.length; i++) {
             if (needFilter) {
-                songKey = songKey.trim();
-                if(data[i].name.indexOf(songKey) < 0 && data[i].anchor.indexOf(songKey) < 0 && data[i].tag.split(";").indexOf(songKey) < 0) {
+                songKey = songKey.trim().toLowerCase();
+                if(data[i].name.toLowerCase().indexOf(songKey) < 0 && data[i].anchor.toLowerCase().indexOf(songKey) < 0 && data[i].tag.split(";").indexOf(songKey) < 0) {
                     continue;
                 }
             }

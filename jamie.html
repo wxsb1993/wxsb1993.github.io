@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="shortcut icon" href="https://pics7.baidu.com/feed/ac6eddc451da81cb7420edc125146a1008243174.png">
+    <link rel="shortcut icon" href="https://c-ssl.dtstatic.com/uploads/item/201510/08/20151008213234_2tdCu.thumb.400_0.jpeg">
     <title>夏天的歌单</title>
 </head>
 <body>
@@ -37,8 +37,8 @@
         $("#songList").empty();
         for (let i = 0; i < data.length; i++) {
             if (needFilter) {
-                songKey = songKey.trim();
-                if(data[i].name.indexOf(songKey) < 0 && data[i].anchor.indexOf(songKey) < 0 && data[i].tag.split(";").indexOf(songKey) < 0) {
+                songKey = songKey.trim().toLowerCase();
+                if(data[i].name.toLowerCase().indexOf(songKey) < 0 && data[i].anchor.toLowerCase().indexOf(songKey) < 0 && data[i].tag.split(";").indexOf(songKey) < 0) {
                     continue;
                 }
             }
@@ -57,35 +57,70 @@
 </script>
 <script>
     let data = [
-        {anchor:"张惠妹",name:"如果你也听说",tag:"流行;国语"},
-        {anchor:"张惠妹",name:"连名带姓",tag:"流行;国语"},
-        {anchor:"张惠妹",name:"人质",tag:"流行;国语"},
-        {name:"丝路",anchor:"梁静茹",tag:"国语;流行"},
-        {name:"大眠",anchor:"王心凌",tag:"国语;流行"},
-        {name:"宁夏",anchor:"梁静茹",tag:"国语;流行"},
-        {name:"崇拜",anchor:"梁静茹",tag:"国语;流行"},
-        {name:"海底",anchor:"一只榴莲",tag:"国语;流行"},
-        {name:"遇见",anchor:"孙燕姿",tag:"国语;流行"},
-        {name:"后来",anchor:"刘若英",tag:"国语;流行"},
-        {name:"阴天",anchor:"莫文蔚",tag:"国语;流行"},
-        {name:"逆光",anchor:"孙燕姿",tag:"国语;流行"},
-        {name:"暗涌",anchor:"王菲",tag:"国语;流行"},
-        {name:"勇气",anchor:"梁静茹",tag:"国语;流行"},
-        {name:"暖暖",anchor:"梁静茹",tag:"国语;流行"},
-        {name:"倒带",anchor:"蔡依林",tag:"国语;流行"},
-        {name:"那年",anchor:"任然",tag:"国语;流行"},
-        {name:"飞机",anchor:"任然",tag:"国语;流行"},
-        {name:"绿色",anchor:"陈雪凝",tag:"国语;流行"},
-        {name:"画心",anchor:"张靓颖",tag:"国语;流行"},
-        {name:"房间",anchor:"刘瑞琦",tag:"国语;流行"},
-        {name:"体面",anchor:"于文文",tag:"国语;流行"},
-        {name:"红豆",anchor:"王菲",tag:"国语;流行"},
-        {name:"人间",anchor:"王菲",tag:"国语;流行"},
-        {name:"流年",anchor:"王菲",tag:"国语;流行"},
-        {name:"笔记",anchor:"周笔畅",tag:"国语;流行"},
-        {name:"轨迹",anchor:"周杰伦",tag:"国语;流行"},
-        {name:"关键词",anchor:"林俊杰",tag:"国语;流行"},
-        {name:"致青春",anchor:"王菲",tag:"国语;流行"}
+        {id:66,anchor:"Alin",name:"我很忙",tag:"国语;流行"},
+        {id:68,anchor:"丁当",name:"猜不透",tag:"国语;流行"},
+        {id:31,anchor:"乌兰托娅",name:"套马杆",tag:"国语;土嗨"},
+        {id:21,anchor:"于文文",name:"体面",tag:"国语;流行"},
+        {id:57,anchor:"五月天",name:"听不到",tag:"国语;流行"},
+        {id:16,anchor:"任然",name:"那年",tag:"国语;流行"},
+        {id:47,anchor:"任然",name:"疑心病",tag:"国语;流行"},
+        {id:17,anchor:"任然",name:"飞机",tag:"国语;流行"},
+        {id:51,anchor:"任素汐",name:"我要你",tag:"国语;流行"},
+        {id:61,anchor:"何洁",name:"小永远",tag:"国语;流行"},
+        {id:40,anchor:"刘忻",name:"颜色",tag:"国语;流行"},
+        {id:20,anchor:"刘瑞琦",name:"房间",tag:"国语;流行"},
+        {id:43,anchor:"刘若英",name:"成全",tag:"国语;流行"},
+        {id:9,anchor:"刘若英",name:"后来",tag:"国语;流行"},
+        {id:26,anchor:"周杰伦",name:"轨迹",tag:"国语;流行"},
+        {id:25,anchor:"周笔畅",name:"笔记",tag:"国语;流行"},
+        {id:52,anchor:"品冠",name:"我以为",tag:"国语;流行"},
+        {id:11,anchor:"孙燕姿",name:"逆光",tag:"国语;流行"},
+        {id:8,anchor:"孙燕姿",name:"遇见",tag:"国语;流行"},
+        {id:64,anchor:"孙燕姿",name:"天黑黑",tag:"国语;流行"},
+        {id:67,anchor:"岑宁儿",name:"追光者",tag:"国语;流行"},
+        {id:3,anchor:"张惠妹",name:"人质",tag:"流行;国语"},
+        {id:19,anchor:"张靓颖",name:"画心",tag:"国语;流行"},
+        {id:48,anchor:"张靓颖",name:"我的梦",tag:"国语;流行"},
+        {id:53,anchor:"李玖哲",name:"想太多",tag:"国语;流行"},
+        {id:62,anchor:"杨宗纬",name:"空白格",tag:"国语;流行"},
+        {id:27,anchor:"林俊杰",name:"关键词",tag:"国语;流行"},
+        {id:65,anchor:"梁静茹",name:"燕尾蝶",tag:"国语;流行"},
+        {id:6,anchor:"梁静茹",name:"宁夏",tag:"国语;流行"},
+        {id:7,anchor:"梁静茹",name:"崇拜",tag:"国语;流行"},
+        {id:14,anchor:"梁静茹",name:"暖暖",tag:"国语;流行"},
+        {id:36,anchor:"梁静茹",name:"问",tag:"国语;流行"},
+        {id:13,anchor:"梁静茹",name:"勇气",tag:"国语;流行"},
+        {id:4,anchor:"梁静茹",name:"丝路",tag:"国语;流行"},
+        {id:46,anchor:"温岚",name:"傻瓜",tag:"国语;流行"},
+        {id:44,anchor:"牛奶咖啡",name:"明天你好",tag:"国语;流行"},
+        {id:5,anchor:"王心凌",name:"大眠",tag:"国语;流行"},
+        {id:24,anchor:"王菲",name:"流年",tag:"国语;流行"},
+        {id:49,anchor:"王菲",name:"笑忘书",tag:"国语;流行"},
+        {id:23,anchor:"王菲",name:"人间",tag:"国语;流行"},
+        {id:22,anchor:"王菲",name:"红豆",tag:"国语;流行"},
+        {id:28,anchor:"王菲",name:"致青春",tag:"国语;流行"},
+        {id:45,anchor:"田馥甄",name:"热情",tag:"国语;流行"},
+        {id:32,anchor:"花姐",name:"狂浪",tag:"国语;土嗨"},
+        {id:38,anchor:"花粥",name:"出山",tag:"国语;流行"},
+        {id:35,anchor:"莫文蔚",name:"爱",tag:"国语;流行"},
+        {id:10,anchor:"莫文蔚",name:"阴天",tag:"国语;流行"},
+        {id:15,anchor:"蔡依林",name:"倒带",tag:"国语;流行"},
+        {id:37,anchor:"蔡依林",name:"我",tag:"国语;流行"},
+        {id:56,anchor:"蔡依林",name:"日不落",tag:"国语;流行"},
+        {id:55,anchor:"蔡依林",name:"说爱你",tag:"国语;流行"},
+        {id:34,anchor:"蔡健雅",name:"紫",tag:"国语;流行"},
+        {id:63,anchor:"蔡健雅",name:"陌生人",tag:"国语;流行"},
+        {id:59,anchor:"蔡健雅",name:"无底洞",tag:"国语;流行"},
+        {id:58,anchor:"蔡健雅",name:"说到爱",tag:"国语;流行"},
+        {id:60,anchor:"蔡健雅",name:"达尔文",tag:"国语;流行"},
+        {id:42,anchor:"蔡健雅",name:"停格",tag:"国语;流行"},
+        {id:41,anchor:"蔡健雅",name:"重来",tag:"国语;流行"},
+        {id:50,anchor:"那英",name:"梦一场",tag:"国语;流行"},
+        {id:54,anchor:"陈奕迅",name:"红玫瑰",tag:"国语;流行"},
+        {id:29,anchor:"陈粒",name:"走马",tag:"国语;民谣"},
+        {id:33,anchor:"陈绮贞",name:"鱼",tag:"国语;流行"},
+        {id:18,anchor:"陈雪凝",name:"绿色",tag:"国语;流行"},
+        {id:39,anchor:"韩雪",name:"想起",tag:"国语;流行"}
     ];
 </script>
 </body>
