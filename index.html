@@ -14,27 +14,12 @@
     <table class="ui large table">
         <thead>
         <tr>
-            <th>Name</th>
-            <th>Registration Date</th>
-            <th>E-mail address</th>
+            <th>歌名</th>
+            <th>歌手</th>
+            <th>标签</th>
         </tr>
         </thead>
         <tbody id="songList">
-        <tr>
-            <td>John Lilki</td>
-            <td>September 14, 2013</td>
-            <td>jhlilk22@yahoo.com</td>
-        </tr>
-        <tr>
-            <td>Jamie Harington</td>
-            <td>January 11, 2014</td>
-            <td>jamieharingonton@yahoo.com</td>
-        </tr>
-        <tr>
-            <td>Jill Lewis</td>
-            <td>May 11, 2014</td>
-            <td>jilsewris22@yahoo.com</td>
-        </tr>
         </tbody>
     </table>
 </div>
@@ -47,15 +32,21 @@
     });
     function getData() {
         $("#songList").empty();
-        for (var i = 0; i < 10; i++) {
-            var $trTemp = $("<tr></tr>");
-            $trTemp.append("<td>" + i + "</td>");
-            $trTemp.append("<td>" + i + "</td>");
-            $trTemp.append("<td>" + i + "</td>");
+        for (let i = 0; i < data.length; i++) {
+            let $trTemp = $("<tr></tr>");
+            $trTemp.append("<td>" + data[i].name + "</td>");
+            $trTemp.append("<td>" + data[i].anchor + "</td>");
+            $trTemp.append("<td>" + data[i].tag + "</td>");
             $("#songList").append($trTemp);
             $trTemp.appendTo("#songList");
         }
     }
+
+    let data = [
+        {anchor:"张惠妹",name:"如果你也听说",tag:"流行;国语"},
+        {anchor:"张惠妹",name:"连名带姓",tag:"流行;国语"},
+        {anchor:"张惠妹",name:"人质",tag:"流行;国语"}
+        ];
 </script>
 </body>
 </html>
