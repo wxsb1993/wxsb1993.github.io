@@ -7,11 +7,12 @@
     <title>Document</title>
 </head>
 <body>
-<div class="html ui top attached segment">
-    <div class="ui huge top attached label"> 歌单 </div>
-    <br/>
-    <br/>
-    <table class="ui large table">
+<div class="html ui top right attached blue segment">
+    <div class="ui search">
+        <input id="songKey" class="prompt" type="text" placeholder="Common passwords...">
+    </div>
+
+    <table class="ui orange large table">
         <thead>
         <tr>
             <th>歌名</th>
@@ -30,9 +31,16 @@
     $(document).ready(function(){
         getData();
     });
-    function getData() {
+    function getData(songKey) {
+        let needFilter = typeof songKey != "undefined" && songKey != null && songKey.trim() !== "";
         $("#songList").empty();
         for (let i = 0; i < data.length; i++) {
+            if (needFilter) {
+                songKey = songKey.trim();
+                if(data[i].name.indexOf(songKey) < 0 && data[i].anchor.indexOf(songKey) < 0 && data[i].tag.indexOf(songKey) < 0) {
+                    continue;
+                }
+            }
             let $trTemp = $("<tr></tr>");
             $trTemp.append("<td>" + data[i].name + "</td>");
             $trTemp.append("<td>" + data[i].anchor + "</td>");
@@ -40,7 +48,11 @@
             $("#songList").append($trTemp);
             $trTemp.appendTo("#songList");
         }
-    }
+    };
+    $("#songKey").bind('input propertychange', function () {
+        let songKey = $("#songKey").val();
+        getData(songKey);
+    });
 </script>
 <script>
     let data = [
