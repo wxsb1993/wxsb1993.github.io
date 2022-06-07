@@ -9,21 +9,32 @@
 </head>
 <body>
 <div class="html ui top right attached blue segment">
-    <div class="ui search">
-        <input id="songKey" class="prompt" type="text" placeholder="输入歌名、歌手或标签">
+    <div class="ui top attached tabular menu">
+        <a class="large item orange active">
+            夏天的歌单
+        </a>
+        <div class="right menu">
+            <div class="item">
+                <div class="ui transparent icon input">
+                    <input id="songValue" type="text" placeholder="输入歌名、歌手或标签">
+                    <i id="songKey" class="search link icon"></i>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <table class="ui orange large table">
-        <thead>
-        <tr>
-            <th>歌名</th>
-            <th>歌手</th>
-            <th>标签</th>
-        </tr>
-        </thead>
-        <tbody id="songList">
-        </tbody>
-    </table>
+    <div class="ui bottom attached segment">
+        <table class="ui pink large table">
+            <thead>
+            <tr>
+                <th>歌名</th>
+                <th>歌手</th>
+                <th>标签</th>
+            </tr>
+            </thead>
+            <tbody id="songList">
+            </tbody>
+        </table>
+    </div>
     <div style="display:none;" class="back-to" id="toolBackTop">
         <a title="返回顶部" onclick="window.scrollTo(0,0);return false;" href="#top" class="back-top"></a>
     </div>
@@ -53,9 +64,9 @@
             $trTemp.appendTo("#songList");
         }
     };
-    $("#songKey").bind('input propertychange', function () {
-        let songKey = $("#songKey").val();
-        getData(songKey);
+    $("#songKey").bind('click', function () {
+        let songValue = $("#songValue").val();
+        getData(songValue);
     });
     $(function () {
         var bt = $('#toolBackTop');
