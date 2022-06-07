@@ -16,7 +16,7 @@
     <table class="ui orange large table">
         <thead>
         <tr>
-            <th class="three column">歌名</th>
+            <th>歌名</th>
             <th>歌手</th>
             <th>标签</th>
         </tr>
@@ -38,7 +38,7 @@
         for (let i = 0; i < data.length; i++) {
             if (needFilter) {
                 songKey = songKey.trim().toLowerCase();
-                if(data[i].name.toLowerCase().indexOf(songKey) < 0 && data[i].anchor.toLowerCase().indexOf(songKey) < 0 && data[i].tag.split(";").indexOf(songKey) < 0) {
+                if(data[i].name.toLowerCase().indexOf(songKey) < 0 && data[i].anchor.replace(";","").toLowerCase().indexOf(songKey) < 0 && data[i].tag.split(";").indexOf(songKey) < 0) {
                     continue;
                 }
             }
