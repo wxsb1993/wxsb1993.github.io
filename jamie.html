@@ -68,6 +68,12 @@
         let songValue = $("#songValue").val();
         getData(songValue);
     });
+    $("#songValue").bind('input propertychange', function () {
+        let songValue = $("#songValue").val();
+        if (typeof songValue == "undefined" || songValue == null || songValue.trim() === "") {
+            getData();
+        }
+    });
     $(function () {
         var bt = $('#toolBackTop');
         var sw = $(document.body)[0].clientWidth;
