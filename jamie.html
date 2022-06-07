@@ -17,7 +17,7 @@
             <div class="item">
                 <div class="ui transparent icon input">
                     <input id="songValue" type="text" placeholder="输入歌名、歌手或标签">
-                    <i id="songKey" class="search link icon"></i>
+                    <i class="search link icon"></i>
                 </div>
             </div>
         </div>
@@ -64,15 +64,9 @@
             $trTemp.appendTo("#songList");
         }
     };
-    $("#songKey").bind('click', function () {
-        let songValue = $("#songValue").val();
-        getData(songValue);
-    });
     $("#songValue").bind('input propertychange', function () {
         let songValue = $("#songValue").val();
-        if (typeof songValue == "undefined" || songValue == null || songValue.trim() === "") {
-            getData();
-        }
+        getData(songValue);
     });
     $(function () {
         var bt = $('#toolBackTop');
