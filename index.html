@@ -10,7 +10,7 @@
             margin: 20px;
         }
         .container {
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
         }
         input, button {
@@ -18,23 +18,16 @@
             margin: 5px 0;
             width: 100%;
         }
-        .button-group {
+        .checkbox-group {
             display: flex;
-            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
             margin: 10px 0;
         }
-        .button-group button {
-            flex: 1;
-            margin: 0 5px;
-            padding: 10px;
-            cursor: pointer;
-            border: 1px solid #ddd;
-            background-color: #f4f4f4;
-        }
-        .button-group button.selected {
-            background-color: #007bff;
-            color: white;
-            border-color: #0056b3;
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         table {
             width: 100%;
@@ -56,15 +49,21 @@
 <body>
 <div class="container">
     <h1>基因概率计算器</h1>
-    <p>计算父本为 <strong>AA</strong>，母本为 <strong>aa</strong> 的后代自交 <strong>n</strong> 代后的基因型概率。</p>
+    <p>计算父本为 <strong>AAbb</strong>，母本为 <strong>aaBB</strong> 的后代自交 <strong>n</strong> 代后的基因型概率。</p>
     <label for="generations">输入代数 (n):</label>
     <input type="number" id="generations" min="1" placeholder="请输入代数">
 
-    <div class="button-group">
-        <button id="none" class="selected" onclick="setRemoveType('none', this)">不去除</button>
-        <button id="aa" onclick="setRemoveType('aa', this)">去除 aa</button>
-        <button id="Aa" onclick="setRemoveType('Aa', this)">去除 Aa</button>
-        <button id="AA" onclick="setRemoveType('AA', this)">去除 AA</button>
+    <p>选择需要保留的基因型:</p>
+    <div class="checkbox-group">
+        <label><input type="checkbox" value="AABB"> AABB</label>
+        <label><input type="checkbox" value="AABb"> AABb</label>
+        <label><input type="checkbox" value="AaBB"> AaBB</label>
+        <label><input type="checkbox" value="AaBb"> AaBb</label>
+        <label><input type="checkbox" value="AAbb"> AAbb</label>
+        <label><input type="checkbox" value="Aabb"> Aabb</label>
+        <label><input type="checkbox" value="aaBB"> aaBB</label>
+        <label><input type="checkbox" value="aaBb"> aaBb</label>
+        <label><input type="checkbox" value="aabb"> aabb</label>
     </div>
 
     <button onclick="calculate()">计算</button>
@@ -72,9 +71,15 @@
         <thead>
         <tr>
             <th>代数 (n)</th>
-            <th>AA 概率</th>
-            <th>Aa 概率</th>
-            <th>aa 概率</th>
+            <th>AABB</th>
+            <th>AABb</th>
+            <th>AaBB</th>
+            <th>AaBb</th>
+            <th>AAbb</th>
+            <th>Aabb</th>
+            <th>aaBB</th>
+            <th>aaBb</th>
+            <th>aabb</th>
         </tr>
         </thead>
         <tbody id="resultBody"></tbody>
@@ -82,67 +87,83 @@
 </div>
 
 <script>
-    let removeType = 'none';
-    let selectedButton = document.getElementById('none'); // 默认选中 "不去除"
-
-    function setRemoveType(type, button) {
-        removeType = type;
-
-        // 更新按钮选中状态
-        if (selectedButton) {
-            selectedButton.classList.remove('selected');
-        }
-        button.classList.add('selected');
-        selectedButton = button;
-    }
+    document.addEventListener("DOMContentLoaded", () => {
+        const checkboxes = document.querySelectorAll(".checkbox-group input");
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+    });
 
     function calculate() {
         const generations = parseInt(document.getElementById("generations").value);
+        const checkboxes = document.querySelectorAll(".checkbox-group input:checked");
+        const keepTypes = Array.from(checkboxes).map(cb => cb.value);
 
         if (isNaN(generations) || generations < 1 || generations > 1000) {
-            alert("请输入有效的代数 (n >= 1 && n <= 1000)");
+            alert("请输入有效的代数 (n >= 1 || n <= 1000)");
             return;
         }
 
-        // 初始比例
-        let pAA = 0; // AA 概率
-        let pAa = 1; // Aa 概率
-        let paa = 0; // aa 概率
+        // 初始比例 (F1: 100% AaBb)
+        let proportions = {
+            AABB: 0,
+            AABb: 0,
+            AaBB: 0,
+            AaBb: 1,
+            AAbb: 0,
+            Aabb: 0,
+            aaBB: 0,
+            aaBb: 0,
+            aabb: 0
+        };
 
         const resultBody = document.getElementById("resultBody");
         resultBody.innerHTML = ""; // 清空表格内容
 
         for (let n = 1; n <= generations; n++) {
             // 计算下一代的未归一化比例
-            let nextAA = pAA + 0.25 * pAa;
-            let nextAa = 0.5 * pAa;
-            let nextaa = 0.25 * pAa + paa;
-            let nextRemoved = nextAA + nextAa + nextaa;
+            const nextProportions = {
+                AaBb: 0.25 * proportions.AaBb,
 
-            // 根据选择去除基因型
-            if (removeType === "aa") {
-                nextRemoved = nextAA + nextAa;
-                nextaa = 0;
-            } else if (removeType === "Aa") {
-                nextRemoved = nextAA + nextaa;
-                nextAa = 0;
-            } else if (removeType === "AA") {
-                nextRemoved = nextAa + nextaa;
-                nextAA = 0;
+                AABb: 0.5 * proportions.AABb + 0.25 * 0.5 * proportions.AaBb,
+                AaBB: 0.5 * proportions.AaBB + 0.25 * 0.5 * proportions.AaBb,
+                Aabb: 0.5 * proportions.Aabb + 0.25 * 0.5 * proportions.AaBb,
+                aaBb: 0.5 * proportions.aaBb + 0.25 * 0.5 * proportions.AaBb,
+
+                AABB: proportions.AABB + 0.25 * proportions.AABb + 0.25 * proportions.AaBB + 0.0625 * proportions.AaBb,
+                AAbb: proportions.AAbb + 0.25 * proportions.AABb + 0.25 * proportions.Aabb + 0.0625 * proportions.AaBb,
+                aaBB: proportions.aaBB + 0.25 * proportions.aaBb + 0.25 * proportions.AaBB + 0.0625 * proportions.AaBb,
+                aabb: proportions.aabb + 0.25 * proportions.aaBb + 0.25 * proportions.Aabb + 0.0625 * proportions.AaBb
+            };
+
+            // 将未选中的基因型比例设置为 0
+            for (const key in nextProportions) {
+                if (!keepTypes.includes(key)) {
+                    nextProportions[key] = 0;
+                }
             }
 
             // 归一化
-            pAA = nextAA / nextRemoved;
-            pAa = nextAa / nextRemoved;
-            paa = nextaa / nextRemoved;
+            const total = Object.values(nextProportions).reduce((sum, value) => sum + value, 0);
+            for (const key in nextProportions) {
+                nextProportions[key] /= total;
+            }
+
+            proportions = nextProportions;
 
             // 添加到表格
             const row = document.createElement("tr");
             row.innerHTML = `
                 <td>${n}</td>
-                <td>${pAA.toFixed(4)}</td>
-                <td>${pAa.toFixed(4)}</td>
-                <td>${paa.toFixed(4)}</td>
+                <td>${proportions.AABB.toFixed(4)}</td>
+                <td>${proportions.AABb.toFixed(4)}</td>
+                <td>${proportions.AaBB.toFixed(4)}</td>
+                <td>${proportions.AaBb.toFixed(4)}</td>
+                <td>${proportions.AAbb.toFixed(4)}</td>
+                <td>${proportions.Aabb.toFixed(4)}</td>
+                <td>${proportions.aaBB.toFixed(4)}</td>
+                <td>${proportions.aaBb.toFixed(4)}</td>
+                <td>${proportions.aabb.toFixed(4)}</td>
             `;
             resultBody.appendChild(row);
         }
