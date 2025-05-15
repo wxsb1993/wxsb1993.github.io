@@ -99,8 +99,8 @@
     function calculate() {
         const generations = parseInt(document.getElementById("generations").value);
 
-        if (isNaN(generations) || generations < 1) {
-            alert("请输入有效的代数 (n >= 1)");
+        if (isNaN(generations) || generations < 1 || generations > 1000) {
+            alert("请输入有效的代数 (n >= 1 && n <= 1000)");
             return;
         }
 
