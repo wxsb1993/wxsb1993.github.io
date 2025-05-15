@@ -18,6 +18,24 @@
             margin: 5px 0;
             width: 100%;
         }
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+        .button-group button {
+            flex: 1;
+            margin: 0 5px;
+            padding: 10px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            background-color: #f4f4f4;
+        }
+        .button-group button.selected {
+            background-color: #007bff;
+            color: white;
+            border-color: #0056b3;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -36,66 +54,102 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>基因概率计算器</h1>
-        <p>计算父本为 <strong>AA</strong>，母本为 <strong>aa</strong> 的后代自交 <strong>n</strong> 代后的基因型概率。</p>
-        <label for="generations">输入代数 (n):</label>
-        <input type="number" id="generations" min="1" placeholder="请输入代数">
-        <button onclick="calculate()">计算</button>
-        <table id="resultTable" style="display: none;">
-            <thead>
-                <tr>
-                    <th>代数 (n)</th>
-                    <th>AA 概率</th>
-                    <th>Aa 概率</th>
-                    <th>aa 概率</th>
-                </tr>
-            </thead>
-            <tbody id="resultBody"></tbody>
-        </table>
+<div class="container">
+    <h1>基因概率计算器</h1>
+    <p>计算父本为 <strong>AA</strong>，母本为 <strong>aa</strong> 的后代自交 <strong>n</strong> 代后的基因型概率。</p>
+    <label for="generations">输入代数 (n):</label>
+    <input type="number" id="generations" min="1" placeholder="请输入代数">
+
+    <div class="button-group">
+        <button id="none" class="selected" onclick="setRemoveType('none', this)">不去除</button>
+        <button id="aa" onclick="setRemoveType('aa', this)">去除 aa</button>
+        <button id="Aa" onclick="setRemoveType('Aa', this)">去除 Aa</button>
+        <button id="AA" onclick="setRemoveType('AA', this)">去除 AA</button>
     </div>
 
-    <script>
-        function calculate() {
-            const generations = parseInt(document.getElementById("generations").value);
-            if (isNaN(generations) || generations < 1) {
-                alert("请输入有效的代数 (n >= 1)");
-                return;
-            }
+    <button onclick="calculate()">计算</button>
+    <table id="resultTable" style="display: none;">
+        <thead>
+        <tr>
+            <th>代数 (n)</th>
+            <th>AA 概率</th>
+            <th>Aa 概率</th>
+            <th>aa 概率</th>
+        </tr>
+        </thead>
+        <tbody id="resultBody"></tbody>
+    </table>
+</div>
 
-            // 初始比例
-            let pAA = 0; // AA 概率
-            let pAa = 1; // Aa 概率
-            let paa = 0; // aa 概率
+<script>
+    let removeType = 'none';
+    let selectedButton = document.getElementById('none'); // 默认选中 "不去除"
 
-            const resultBody = document.getElementById("resultBody");
-            resultBody.innerHTML = ""; // 清空表格内容
+    function setRemoveType(type, button) {
+        removeType = type;
 
-            for (let n = 1; n <= generations; n++) {
-                // 计算下一代的未归一化比例
-                const nextAA = pAA + 0.25 * pAa;
-                const nextAa = 0.5 * pAa;
-                const nextAaRemoved = nextAA + nextAa; // 去除 aa 后的总比例
-
-                // 归一化
-                pAA = nextAA / nextAaRemoved;
-                pAa = nextAa / nextAaRemoved;
-                paa = 0; // aa 被移除
-
-                // 添加到表格
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${n}</td>
-                    <td>${pAA.toFixed(4)}</td>
-                    <td>${pAa.toFixed(4)}</td>
-                    <td>${paa.toFixed(4)}</td>
-                `;
-                resultBody.appendChild(row);
-            }
-
-            // 显示结果表格
-            document.getElementById("resultTable").style.display = "table";
+        // 更新按钮选中状态
+        if (selectedButton) {
+            selectedButton.classList.remove('selected');
         }
-    </script>
+        button.classList.add('selected');
+        selectedButton = button;
+    }
+
+    function calculate() {
+        const generations = parseInt(document.getElementById("generations").value);
+
+        if (isNaN(generations) || generations < 1) {
+            alert("请输入有效的代数 (n >= 1)");
+            return;
+        }
+
+        // 初始比例
+        let pAA = 0; // AA 概率
+        let pAa = 1; // Aa 概率
+        let paa = 0; // aa 概率
+
+        const resultBody = document.getElementById("resultBody");
+        resultBody.innerHTML = ""; // 清空表格内容
+
+        for (let n = 1; n <= generations; n++) {
+            // 计算下一代的未归一化比例
+            let nextAA = pAA + 0.25 * pAa;
+            let nextAa = 0.5 * pAa;
+            let nextaa = 0.25 * pAa + paa;
+            let nextRemoved = nextAA + nextAa + nextaa;
+
+            // 根据选择去除基因型
+            if (removeType === "aa") {
+                nextRemoved = nextAA + nextAa;
+                nextaa = 0;
+            } else if (removeType === "Aa") {
+                nextRemoved = nextAA + nextaa;
+                nextAa = 0;
+            } else if (removeType === "AA") {
+                nextRemoved = nextAa + nextaa;
+                nextAA = 0;
+            }
+
+            // 归一化
+            pAA = nextAA / nextRemoved;
+            pAa = nextAa / nextRemoved;
+            paa = nextaa / nextRemoved;
+
+            // 添加到表格
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${n}</td>
+                <td>${pAA.toFixed(4)}</td>
+                <td>${pAa.toFixed(4)}</td>
+                <td>${paa.toFixed(4)}</td>
+            `;
+            resultBody.appendChild(row);
+        }
+
+        // 显示结果表格
+        document.getElementById("resultTable").style.display = "table";
+    }
+</script>
 </body>
 </html>
