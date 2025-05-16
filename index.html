@@ -201,9 +201,9 @@
 
     function formatProbability(value) {
         if (value.toFixed(4) === "0.0000") {
-            return "0";
+            return "≈0";
         } else if (value.toFixed(4) === "1.0000") {
-            return "1";
+            return "≈1";
         } else {
             return value.toFixed(4);
         }
