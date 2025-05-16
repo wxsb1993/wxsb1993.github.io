@@ -71,6 +71,8 @@
         <thead>
         <tr>
             <th>代数 (n)</th>
+            <th>A概率</th>
+            <th>B概率</th>
             <th>AABB</th>
             <th>AABb</th>
             <th>AaBB</th>
@@ -151,25 +153,41 @@
 
             proportions = nextProportions;
 
+            // 计算 A 和 B 的概率
+            const probabilityA = proportions.AABB + proportions.AABb + 0.5 * proportions.AaBB + 0.5 * proportions.AaBb + proportions.AAbb + 0.5 * proportions.Aabb;
+            const probabilityB = proportions.AABB + 0.5 * proportions.AABb + proportions.AaBB + 0.5 * proportions.AaBb + proportions.aaBB + 0.5 * proportions.aaBb;
+
             // 添加到表格
             const row = document.createElement("tr");
             row.innerHTML = `
                 <td>${n}</td>
-                <td>${proportions.AABB.toFixed(4)}</td>
-                <td>${proportions.AABb.toFixed(4)}</td>
-                <td>${proportions.AaBB.toFixed(4)}</td>
-                <td>${proportions.AaBb.toFixed(4)}</td>
-                <td>${proportions.AAbb.toFixed(4)}</td>
-                <td>${proportions.Aabb.toFixed(4)}</td>
-                <td>${proportions.aaBB.toFixed(4)}</td>
-                <td>${proportions.aaBb.toFixed(4)}</td>
-                <td>${proportions.aabb.toFixed(4)}</td>
+                <td>${formatProbability(probabilityA)}</td>
+                <td>${formatProbability(probabilityB)}</td>
+                <td>${formatProbability(proportions.AABB)}</td>
+                <td>${formatProbability(proportions.AABb)}</td>
+                <td>${formatProbability(proportions.AaBB)}</td>
+                <td>${formatProbability(proportions.AaBb)}</td>
+                <td>${formatProbability(proportions.AAbb)}</td>
+                <td>${formatProbability(proportions.Aabb)}</td>
+                <td>${formatProbability(proportions.aaBB)}</td>
+                <td>${formatProbability(proportions.aaBb)}</td>
+                <td>${formatProbability(proportions.aabb)}</td>
             `;
             resultBody.appendChild(row);
         }
 
         // 显示结果表格
         document.getElementById("resultTable").style.display = "table";
+    }
+
+    function formatProbability(value) {
+        if (value.toFixed(4) === "0.0000") {
+            return "0";
+        } else if (value.toFixed(4) === "1.0000") {
+            return "1";
+        } else {
+            return value.toFixed(4);
+        }
     }
 </script>
 </body>
