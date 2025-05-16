@@ -49,8 +49,17 @@
         }
         .table-container {
             max-height: 400px;
-            overflow-y: auto;
+            overflow: auto;
             border: 1px solid #ddd;
+        }
+        td:first-child, th:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            background-color: #f4f4f4;
+        }
+        th:first-child {
+            z-index: 3;
         }
     </style>
 </head>
