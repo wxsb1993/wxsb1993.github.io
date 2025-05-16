@@ -43,6 +43,14 @@
         }
         th {
             background-color: #f4f4f4;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
         }
     </style>
 </head>
@@ -67,25 +75,27 @@
     </div>
 
     <button onclick="calculate()">计算</button>
-    <table id="resultTable" style="display: none;">
-        <thead>
-        <tr>
-            <th>代数 (n)</th>
-            <th>A概率</th>
-            <th>B概率</th>
-            <th>AABB</th>
-            <th>AABb</th>
-            <th>AaBB</th>
-            <th>AaBb</th>
-            <th>AAbb</th>
-            <th>Aabb</th>
-            <th>aaBB</th>
-            <th>aaBb</th>
-            <th>aabb</th>
-        </tr>
-        </thead>
-        <tbody id="resultBody"></tbody>
-    </table>
+    <div class="table-container">
+        <table id="resultTable" style="display: none;">
+            <thead>
+            <tr>
+                <th>代数 (n)</th>
+                <th>A概率</th>
+                <th>B概率</th>
+                <th>AABB</th>
+                <th>AABb</th>
+                <th>AaBB</th>
+                <th>AaBb</th>
+                <th>AAbb</th>
+                <th>Aabb</th>
+                <th>aaBB</th>
+                <th>aaBb</th>
+                <th>aabb</th>
+            </tr>
+            </thead>
+            <tbody id="resultBody"></tbody>
+        </table>
+    </div>
 </div>
 
 <script>
