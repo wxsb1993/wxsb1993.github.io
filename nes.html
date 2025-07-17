@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NES网页运行器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: #1e3c72;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #1e3c72, #2a5298);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(30, 60, 114, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 60, 114, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #f093fb, #f5576c);
+        }
+
+        .btn-warning:hover {
+            box-shadow: 0 6px 20px rgba(240, 147, 251, 0.4);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .file-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
+        }
+
+        .emulator-container {
+            background: #000;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            border: 3px solid #333;
+            border-radius: 10px;
+            background: #000;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .status {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .controls-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .controls-info h3 {
+            color: #1e3c72;
+            margin-bottom: 15px;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .key {
+            background: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-family: monospace;
+            font-weight: bold;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 1.2rem;
+            z-index: 10;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1e3c72;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 NES网页运行器</h1>
+            <p>在浏览器中体验经典NES游戏</p>
+        </div>
+
+        <div class="controls">
+            <input type="file" id="romFile" class="file-input" accept=".nes,.NES" onchange="loadROM(event)">
+            <label for="romFile" class="file-label">📁 选择ROM文件</label>
+            <button class="btn" id="startBtn" onclick="startEmulation()" disabled>▶️ 开始游戏</button>
+            <button class="btn btn-warning" id="pauseBtn" onclick="pauseEmulation()" disabled>⏸️ 暂停</button>
+            <button class="btn btn-success" id="resetBtn" onclick="resetEmulation()" disabled>🔄 重置</button>
+            <button class="btn" onclick="fullscreen()">🔍 全屏</button>
+        </div>
+
+        <div class="emulator-container">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>加载中...</div>
+            </div>
+            <canvas id="gameCanvas" width="256" height="240"></canvas>
+        </div>
+
+        <div class="controls-info">
+            <h3>🎮 控制说明</h3>
+            <div class="controls-grid">
+                <div class="control-group">
+                    <span class="key">WASD</span>
+                    <span>方向键</span>
+                </div>
+                <div class="control-group">
+                    <span class="key">J</span>
+                    <span>A按钮</span>
+                </div>
+                <div class="control-group">
+                    <span class="key">K</span>
+                    <span>B按钮</span>
+                </div>
+                <div class="control-group">
+                    <span class="key">Enter</span>
+                    <span>开始</span>
+                </div>
+                <div class="control-group">
+                    <span class="key">Shift</span>
+                    <span>选择</span>
+                </div>
+                <div class="control-group">
+                    <span class="key">Space</span>
+                    <span>暂停</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // NES模拟器核心类
+        class NESEmulator {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.rom = null;
+                this.isRunning = false;
+                this.isPaused = false;
+                this.frameCount = 0;
+                this.lastTime = 0;
+                
+                // 模拟的CPU和内存
+                this.cpu = {
+                    registers: {
+                        A: 0, X: 0, Y: 0, SP: 0xFF, PC: 0x8000,
+                        status: 0x20
+                    },
+                    memory: new Uint8Array(65536),
+                    cycles: 0
+                };
+                
+                // 模拟的PPU（图像处理单元）
+                this.ppu = {
+                    screen: new Uint8Array(256 * 240 * 4), // RGBA
+                    palette: new Uint8Array(32),
+                    cycles: 0
+                };
+                
+                // 控制器状态
+                this.controllers = {
+                    controller1: 0,
+                    controller2: 0
+                };
+                
+                this.setupEventListeners();
+                this.initializePalette();
+            }
+            
+            setupEventListeners() {
+                // 键盘事件
+                document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+                document.addEventListener('keyup', (e) => this.handleKeyUp(e));
+                
+                // 防止默认行为
+                document.addEventListener('keydown', (e) => {
+                    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+                        e.preventDefault();
+                    }
+                });
+            }
+            
+            handleKeyDown(e) {
+                if (!this.isRunning || this.isPaused) return;
+                
+                switch(e.code) {
+                    case 'KeyW':
+                    case 'ArrowUp':
+                        this.controllers.controller1 |= 0x08; // Up
+                        break;
+                    case 'KeyS':
+                    case 'ArrowDown':
+                        this.controllers.controller1 |= 0x04; // Down
+                        break;
+                    case 'KeyA':
+                    case 'ArrowLeft':
+                        this.controllers.controller1 |= 0x02; // Left
+                        break;
+                    case 'KeyD':
+                    case 'ArrowRight':
+                        this.controllers.controller1 |= 0x01; // Right
+                        break;
+                    case 'KeyJ':
+                        this.controllers.controller1 |= 0x80; // A
+                        break;
+                    case 'KeyK':
+                        this.controllers.controller1 |= 0x40; // B
+                        break;
+                    case 'Enter':
+                        this.controllers.controller1 |= 0x10; // Start
+                        break;
+                    case 'ShiftLeft':
+                    case 'ShiftRight':
+                        this.controllers.controller1 |= 0x20; // Select
+                        break;
+                    case 'Space':
+                        this.pauseEmulation();
+                        break;
+                }
+            }
+            
+            handleKeyUp(e) {
+                switch(e.code) {
+                    case 'KeyW':
+                    case 'ArrowUp':
+                        this.controllers.controller1 &= ~0x08;
+                        break;
+                    case 'KeyS':
+                    case 'ArrowDown':
+                        this.controllers.controller1 &= ~0x04;
+                        break;
+                    case 'KeyA':
+                    case 'ArrowLeft':
+                        this.controllers.controller1 &= ~0x02;
+                        break;
+                    case 'KeyD':
+                    case 'ArrowRight':
+                        this.controllers.controller1 &= ~0x01;
+                        break;
+                    case 'KeyJ':
+                        this.controllers.controller1 &= ~0x80;
+                        break;
+                    case 'KeyK':
+                        this.controllers.controller1 &= ~0x40;
+                        break;
+                    case 'Enter':
+                        this.controllers.controller1 &= ~0x10;
+                        break;
+                    case 'ShiftLeft':
+                    case 'ShiftRight':
+                        this.controllers.controller1 &= ~0x20;
+                        break;
+                }
+            }
+            
+            initializePalette() {
+                // 初始化NES调色板（简化版）
+                const colors = [
+                    0x525252, 0xB40000, 0xA00000, 0xB1003D, 0x740069, 0x00005F, 0x000087, 0x002D61,
+                    0x004A05, 0x006700, 0x006700, 0x5D5D00, 0x4A3D00, 0x002D61, 0x000000, 0x000000,
+                    0xC4C4C4, 0xFF0000, 0xEA0000, 0xFF0063, 0xBF00BF, 0x0000FF, 0x0000FF, 0x0055FF,
+                    0x00AA00, 0x00FF00, 0x00FF00, 0xFFFF00, 0xFFAA00, 0xFF5500, 0x000000, 0x000000
+                ];
+                
+                for (let i = 0; i < 32; i++) {
+                    const color = colors[i];
+                    this.ppu.palette[i * 3] = (color >> 16) & 0xFF;     // R
+                    this.ppu.palette[i * 3 + 1] = (color >> 8) & 0xFF;  // G
+                    this.ppu.palette[i * 3 + 2] = color & 0xFF;         // B
+                }
+            }
+            
+            loadROM(romData) {
+                try {
+                    this.rom = new Uint8Array(romData);
+                    
+                    // 检查NES文件头
+                    if (this.rom[0] !== 0x4E || this.rom[1] !== 0x45 || 
+                        this.rom[2] !== 0x53 || this.rom[3] !== 0x1A) {
+                        throw new Error('无效的NES文件格式');
+                    }
+                    
+                    // 加载程序数据到内存
+                    const prgSize = this.rom[4] * 16384; // 16KB units
+                    const chrSize = this.rom[5] * 8192;  // 8KB units
+                    
+                    // 复制程序数据到CPU内存
+                    for (let i = 0; i < prgSize; i++) {
+                        this.cpu.memory[0x8000 + i] = this.rom[16 + i];
+                        if (prgSize <= 16384) {
+                            this.cpu.memory[0xC000 + i] = this.rom[16 + i]; // 镜像
+                        }
+                    }
+                    
+                    showStatus('ROM加载成功', 'success');
+                    return true;
+                } catch (error) {
+                    showStatus('ROM加载失败: ' + error.message, 'error');
+                    return false;
+                }
+            }
+            
+            start() {
+                if (!this.rom) {
+                    showStatus('请先加载ROM文件', 'error');
+                    return;
+                }
+                
+                this.isRunning = true;
+                this.isPaused = false;
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                
+                // 重置CPU状态
+                this.cpu.registers.PC = 0x8000;
+                this.cpu.registers.SP = 0xFF;
+                this.cpu.registers.status = 0x20;
+                
+                this.gameLoop();
+                showStatus('游戏开始运行', 'success');
+            }
+            
+            pause() {
+                this.isPaused = !this.isPaused;
+                if (this.isPaused) {
+                    showStatus('游戏已暂停', 'info');
+                } else {
+                    showStatus('游戏已恢复', 'success');
+                    this.gameLoop();
+                }
+            }
+            
+            reset() {
+                this.isRunning = false;
+                this.isPaused = false;
+                this.frameCount = 0;
+                
+                // 重置CPU状态
+                this.cpu.registers.PC = 0x8000;
+                this.cpu.registers.SP = 0xFF;
+                this.cpu.registers.status = 0x20;
+                
+                // 清空屏幕
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(0, 0, 256, 240);
+                
+                showStatus('游戏已重置', 'info');
+            }
+            
+            gameLoop() {
+                if (!this.isRunning || this.isPaused) return;
+                
+                const currentTime = performance.now();
+                const deltaTime = currentTime - this.lastTime;
+                
+                // 模拟60FPS
+                if (deltaTime >= 16.67) { // 1000ms / 60fps ≈ 16.67ms
+                    this.executeFrame();
+                    this.lastTime = currentTime;
+                }
+                
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            executeFrame() {
+                // 模拟CPU执行
+                this.executeCPU();
+                
+                // 模拟PPU渲染
+                this.renderFrame();
+                
+                this.frameCount++;
+            }
+            
+            executeCPU() {
+                // 简化的CPU模拟
+                const opcode = this.cpu.memory[this.cpu.registers.PC];
+                
+                // 基本的指令模拟
+                switch(opcode) {
+                    case 0x00: // BRK
+                        this.cpu.registers.PC++;
+                        break;
+                    case 0xEA: // NOP
+                        this.cpu.registers.PC++;
+                        break;
+                    case 0x4C: // JMP absolute
+                        this.cpu.registers.PC = this.cpu.memory[this.cpu.registers.PC + 1] | 
+                                              (this.cpu.memory[this.cpu.registers.PC + 2] << 8);
+                        break;
+                    default:
+                        this.cpu.registers.PC++;
+                        break;
+                }
+                
+                this.cpu.cycles += 1;
+            }
+            
+            renderFrame() {
+                // 简化的渲染 - 生成一些测试图案
+                const imageData = this.ctx.createImageData(256, 240);
+                const data = imageData.data;
+                
+                for (let y = 0; y < 240; y++) {
+                    for (let x = 0; x < 256; x++) {
+                        const index = (y * 256 + x) * 4;
+                        
+                        // 生成简单的测试图案
+                        let r = 0, g = 0, b = 0;
+                        
+                        if (this.frameCount % 60 < 30) {
+                            // 交替显示不同颜色
+                            r = (x + this.frameCount) % 256;
+                            g = (y + this.frameCount) % 256;
+                            b = 128;
+                        } else {
+                            r = 128;
+                            g = (x + y + this.frameCount) % 256;
+                            b = (x - y + this.frameCount) % 256;
+                        }
+                        
+                        data[index] = r;     // R
+                        data[index + 1] = g; // G
+                        data[index + 2] = b; // B
+                        data[index + 3] = 255; // A
+                    }
+                }
+                
+                this.ctx.putImageData(imageData, 0, 0);
+            }
+        }
+
+        // 全局变量
+        let emulator = null;
+        let currentROM = null;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('gameCanvas');
+            emulator = new NESEmulator(canvas);
+            
+            // 初始化黑色屏幕
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, 256, 240);
+        });
+
+        // 加载ROM文件
+        function loadROM(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showLoading(true);
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentROM = e.target.result;
+                const success = emulator.loadROM(currentROM);
+                
+                document.getElementById('startBtn').disabled = !success;
+                document.getElementById('resetBtn').disabled = !success;
+                
+                showLoading(false);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 开始模拟
+        function startEmulation() {
+            if (emulator) {
+                emulator.start();
+                document.getElementById('pauseBtn').disabled = false;
+                document.getElementById('startBtn').disabled = true;
+            }
+        }
+
+        // 暂停/恢复模拟
+        function pauseEmulation() {
+            if (emulator) {
+                emulator.pause();
+                const pauseBtn = document.getElementById('pauseBtn');
+                pauseBtn.textContent = emulator.isPaused ? '▶️ 恢复' : '⏸️ 暂停';
+            }
+        }
+
+        // 重置模拟
+        function resetEmulation() {
+            if (emulator) {
+                emulator.reset();
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('pauseBtn').textContent = '⏸️ 暂停';
+            }
+        }
+
+        // 全屏模式
+        function fullscreen() {
+            const canvas = document.getElementById('gameCanvas');
+            if (canvas.requestFullscreen) {
+                canvas.requestFullscreen();
+            } else if (canvas.webkitRequestFullscreen) {
+                canvas.webkitRequestFullscreen();
+            } else if (canvas.msRequestFullscreen) {
+                canvas.msRequestFullscreen();
+            }
+        }
+
+        // 显示加载状态
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            loading.style.display = show ? 'block' : 'none';
+        }
+
+        // 显示状态消息
+        function showStatus(message, type) {
+            const status = document.createElement('div');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(status, container.firstChild);
+            
+            setTimeout(() => {
+                status.remove();
+            }, 3000);
+        }
+
+        // 键盘快捷键
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space' && emulator && emulator.isRunning) {
+                e.preventDefault();
+                pauseEmulation();
+            }
+        });
+    </script>
+</body>
+</html> 
