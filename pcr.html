@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>PCR 过程互动</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f0f4f8;
+    color: #222;
+  }
+  .app { display: flex; height: 100vh; }
+  .left {
+    width: 42%;
+    padding: 24px;
+    overflow-y: auto;
+    background: #ffffff;
+    border-right: 1px solid #d8e0e8;
+  }
+  .right {
+    width: 58%;
+    padding: 24px;
+    overflow: auto;
+    background: #fafcff;
+    position: relative;
+  }
+  h2 { margin-top: 0; color: #1f4e79; }
+  h3 { color: #1f4e79; margin-bottom: 8px; }
+  .step {
+    border: 1px solid #1f77b4;
+    background: #f7faff;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 0 0 2px rgba(31,119,180,0.1);
+    display: none;
+  }
+  .step.active { display: block; }
+  button {
+    background: #1f77b4;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin: 4px 4px 4px 0;
+  }
+  button:hover { background: #155a8a; }
+  button:disabled { background: #aac3d6; cursor: not-allowed; }
+  button.option {
+    background: #e8eef5;
+    color: #1f4e79;
+    border: 1px solid #b8c8d8;
+    text-align: left;
+    width: 100%;
+    margin: 4px 0;
+    font-family: "Courier New", monospace;
+  }
+  button.option:hover { background: #d4e0ed; }
+  button.option.selected { background: #ffd966; border-color: #c9a227; }
+  button.option.correct { background: #b6e3c6; border-color: #2d8659; color: #14532d; }
+  button.option.wrong { background: #f3b8b8; border-color: #b03030; color: #5a1010; }
+  .order-list { list-style: none; padding: 0; margin: 8px 0; }
+  .order-list li {
+    background: #fff;
+    border: 1px solid #b8c8d8;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    cursor: grab;
+    user-select: none;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .order-list li:hover { background: #eef4fa; }
+  .order-list li.dragging { opacity: 0.4; cursor: grabbing; }
+  .order-list li.drag-over { border-color: #1f77b4; background: #e8f0fa; }
+  .order-list li::before {
+    content: "⋮⋮";
+    color: #b8c8d8;
+    margin-right: 10px;
+    letter-spacing: -2px;
+  }
+  .slider-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+  .slider-wrap {
+    flex: 1;
+    position: relative;
+    height: 28px;
+    display: flex;
+    align-items: center;
+  }
+  .slider-grad {
+    position: absolute;
+    left: 0; right: 0;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(to right, #4a90e2 0%, #f5d76e 50%, #e74c3c 100%);
+    pointer-events: none;
+  }
+  .slider-wrap input[type=range] {
+    position: relative;
+    width: 100%;
+    background: transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 28px;
+  }
+  .slider-wrap input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border: 2px solid #1f77b4;
+    border-radius: 50%;
+    cursor: pointer;
+    margin-top: -5px;
+  }
+  .slider-wrap input[type=range]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border: 2px solid #1f77b4;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .slider-wrap input[type=range]::-webkit-slider-runnable-track {
+    height: 8px;
+    background: transparent;
+  }
+  .slider-wrap input[type=range]::-moz-range-track {
+    height: 8px;
+    background: transparent;
+  }
+  .slider-row .val {
+    width: 60px;
+    text-align: right;
+    font-family: "Courier New", monospace;
+    font-weight: bold;
+    color: #1f4e79;
+  }
+  select.purpose-sel {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #b8c8d8;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 14px;
+    color: #1f4e79;
+    margin: 4px 0 12px 0;
+    font-family: inherit;
+  }
+  select.purpose-sel:focus { outline: 2px solid #1f77b4; }
+  .feedback { margin-top: 8px; font-weight: bold; }
+  .feedback.ok { color: #2d8659; }
+  .feedback.bad { color: #b03030; }
+  .progress { font-size: 12px; color: #666; margin-bottom: 8px; }
+  .small { font-size: 12px; color: #666; }
+
+  /* 步骤条 */
+  .stepper {
+    display: flex;
+    align-items: center;
+    margin: 12px 0 16px 0;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .stepper .stp {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    color: #888;
+  }
+  .stepper .stp .dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #e0e6ed;
+    color: #888;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 4px;
+    border: 2px solid #e0e6ed;
+  }
+  .stepper .stp.active .dot { background: #1f77b4; color: #fff; border-color: #1f77b4; }
+  .stepper .stp.done .dot { background: #74c69d; color: #fff; border-color: #74c69d; }
+  .stepper .stp.active { color: #1f77b4; font-weight: bold; }
+  .stepper .stp.done { color: #2d8659; }
+  .stepper .bar {
+    flex: 1;
+    height: 2px;
+    background: #e0e6ed;
+    min-width: 12px;
+    margin: 0 4px;
+  }
+  .stepper .bar.done { background: #74c69d; }
+
+  /* 总结弹层 */
+  .summary-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .summary-modal.show { display: flex; }
+  .summary-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 24px 28px;
+    max-width: 560px;
+    width: 92%;
+    max-height: 86vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  }
+  .summary-card h3 { margin-top: 0; }
+  .summary-row {
+    border-left: 4px solid #1f77b4;
+    background: #f7faff;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+  }
+  .summary-row.ok { border-color: #74c69d; background: #eef9f2; }
+  .summary-row.bad { border-color: #e74c3c; background: #fdf0ee; }
+  .summary-row .lbl { font-weight: bold; color: #1f4e79; }
+  .summary-row.bad .lbl { color: #b03030; }
+  .summary-row.ok .lbl { color: #2d8659; }
+  #stage { width: 100%; display: block; }
+  .stage-title {
+    color: #1f4e79;
+    font-weight: bold;
+    margin-bottom: 4px;
+    font-size: 16px;
+  }
+  .stage-sub { color: #555; font-size: 13px; margin-bottom: 12px; }
+  .cycle-counter {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    background: #1f77b4;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="left" id="left">
+    <h2>PCR 过程互动</h2>
+    <div class="stepper" id="stepper"></div>
+
+    <div class="step active" id="step-order">
+      <h3>第一步：排列三个过程的顺序</h3>
+      <p class="small">拖动方块调整顺序（自上而下为先后顺序），完成后点击"确认顺序"。</p>
+      <ul class="order-list" id="orderList"></ul>
+      <button onclick="checkOrder()">确认顺序</button>
+      <div class="feedback" id="orderFeedback"></div>
+    </div>
+
+    <div class="step" id="step-conditions">
+      <h3>第二步：选择三个过程的温度</h3>
+      <div><b>变性</b>
+        <div class="slider-row">
+          <div class="slider-wrap">
+            <div class="slider-grad"></div>
+            <input type="range" id="t1" min="40" max="100" value="70">
+          </div>
+          <div class="val"><span id="t1v">70</span>℃</div>
+        </div>
+      </div>
+      <div><b>退火</b>
+        <div class="slider-row">
+          <div class="slider-wrap">
+            <div class="slider-grad"></div>
+            <input type="range" id="t2" min="40" max="100" value="70">
+          </div>
+          <div class="val"><span id="t2v">70</span>℃</div>
+        </div>
+      </div>
+      <div><b>延伸（聚合）</b>
+        <div class="slider-row">
+          <div class="slider-wrap">
+            <div class="slider-grad"></div>
+            <input type="range" id="t3" min="40" max="100" value="70">
+          </div>
+          <div class="val"><span id="t3v">70</span>℃</div>
+        </div>
+      </div>
+      <button onclick="checkTemps()">确认温度</button>
+      <div class="feedback" id="tempFeedback"></div>
+    </div>
+
+    <div class="step" id="step-purpose">
+      <h3>第三步：每一步的目的</h3>
+      <div id="purposeBlock"></div>
+      <button onclick="checkPurpose()">确认</button>
+      <div class="feedback" id="purposeFeedback"></div>
+    </div>
+
+    <div class="step" id="step-primer">
+      <h3>第四步：选择正确的引物（共 2 个）</h3>
+      <p class="small">引物书写遵循 5'→3' 的方向。</p>
+      <div id="primerOptions"></div>
+      <button onclick="checkPrimers()">确认引物</button>
+      <div class="feedback" id="primerFeedback"></div>
+    </div>
+
+    <div class="step" id="step-cycles">
+      <h3>第五步：进行 PCR 循环</h3>
+      <p class="small">"自动播放本轮"会连续完成变性→退火→延伸；"下一步"则一步一步播放；播放中可"暂停/继续"。共 3 次循环。</p>
+      <div>当前已完成循环数：<b id="cycleNum">0</b> / 3</div>
+      <div>当前阶段：<b id="phaseText">尚未开始</b></div>
+      <div style="margin-top:8px;">
+        <button id="stepBtn" onclick="nextStep()">下一步</button>
+        <button id="autoBtn" onclick="runFullCycle()">自动播放本轮</button>
+        <button id="pauseBtn" onclick="togglePause()" disabled>暂停</button>
+      </div>
+      <div class="feedback" id="cycleFeedback"></div>
+    </div>
+
+    <div class="step" id="step-quiz">
+      <h3>第六步：思考题</h3>
+      <p>经过 <b>n</b> 次 PCR 循环后，理论上由 1 个亲本 DNA 分子可得到的 DNA 分子总数是：</p>
+      <div id="quizOptions"></div>
+      <button onclick="checkQuiz()">确认答案</button>
+      <button id="summaryBtn" onclick="showSummary()" disabled>查看总结</button>
+      <div class="feedback" id="quizFeedback"></div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="cycle-counter" id="cycleCounter">循环 0</div>
+    <div class="stage-title" id="stageTitle">亲本 DNA</div>
+    <div class="stage-sub" id="stageSub">两端为碱基序列，中间序列用直线表示。</div>
+    <svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+</div>
+
+<!-- 总结弹层 -->
+<div class="summary-modal" id="summaryModal">
+  <div class="summary-card">
+    <h3>本次 PCR 互动总结</h3>
+    <div id="summaryBody"></div>
+    <div style="margin-top:12px; text-align:right;">
+      <button onclick="closeSummary()">关闭</button>
+      <button onclick="restartAll()">重新开始</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========================================================
+   常量与序列
+   ======================================================== */
+const COMPLEMENT = { A:'T', T:'A', G:'C', C:'G' };
+const TOP_LEFT_53  = ['A','T','G','C','G','T'];   // 上链 5'→3' 左端 6 碱基
+const TOP_RIGHT_53 = ['A','C','G','T','A','C'];   // 上链 5'→3' 右端 6 碱基
+const BOT_LEFT_35  = TOP_LEFT_53.map(b=>COMPLEMENT[b]);  // 下链 3'→5' 左端 6 碱基
+const BOT_RIGHT_35 = TOP_RIGHT_53.map(b=>COMPLEMENT[b]); // 下链 3'→5' 右端 6 碱基
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+const BASE_W = 18, BASE_H = 22;
+const SIDE_BASES = 6;
+const MIDDLE_LEN = 180;
+const DNA_W = SIDE_BASES*BASE_W*2 + MIDDLE_LEN; // 396
+
+// 在每个 DNA 容器内的 y 坐标
+const Y_TOP_PAIRED = 78;
+const Y_BOT_PAIRED = 114;       // 配对时上下间距 36
+const Y_TOP_DENATURED = 30;
+const Y_BOT_DENATURED = 162;
+const Y_NEW_FROM_TOP = Y_TOP_DENATURED + 36; // 66 - 新链(上链模板)
+const Y_NEW_FROM_BOT = Y_BOT_DENATURED - 36; // 126 - 新链(下链模板)
+
+const STAGE_VIEW_W = 880;
+const ANIM_BOX_H = 220;
+const STATIC_BOX_H = 120;
+
+/* ========================================================
+   左侧步骤切换 + 步骤条
+   ======================================================== */
+const STEP_IDS = ['step-order','step-conditions','step-purpose','step-primer','step-cycles','step-quiz'];
+const STEP_LABELS = ['顺序','温度','目的','引物','循环','思考'];
+let currentStepIdx = 0;
+
+function renderStepper(){
+  const wrap = document.getElementById('stepper');
+  wrap.innerHTML = '';
+  STEP_IDS.forEach((id, i)=>{
+    const stp = document.createElement('div');
+    stp.className = 'stp';
+    if (i < currentStepIdx) stp.classList.add('done');
+    if (i === currentStepIdx) stp.classList.add('active');
+    stp.innerHTML = `<span class="dot">${i<currentStepIdx?'✓':(i+1)}</span><span>${STEP_LABELS[i]}</span>`;
+    wrap.appendChild(stp);
+    if (i < STEP_IDS.length-1){
+      const bar = document.createElement('div');
+      bar.className = 'bar' + (i < currentStepIdx ? ' done' : '');
+      wrap.appendChild(bar);
+    }
+  });
+}
+function setActive(id){
+  STEP_IDS.forEach(s=>document.getElementById(s).classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  currentStepIdx = STEP_IDS.indexOf(id);
+  renderStepper();
+}
+
+/* ========================================================
+   错误追踪：用于最终总结
+   ======================================================== */
+const errorLog = {
+  order:   { wrongCount: 0, wrongChoices: [] },
+  temps:   { wrongCount: 0, wrongChoices: [] },
+  purpose: { wrongCount: 0, wrongChoices: [] }, // wrongChoices: [{step, picked}]
+  primer:  { wrongCount: 0, wrongChoices: [] },
+  quiz:    { wrongCount: 0, wrongChoices: [] }
+};
+
+/* ========================================================
+   步骤一：拖动排序
+   ======================================================== */
+const orderItems = [
+  { id:'A', text:'退火（引物结合模板）' },
+  { id:'B', text:'变性（双链解开）' },
+  { id:'C', text:'延伸（聚合形成新链）' }
+];
+const correctOrder = ['B','A','C'];
+let dragSrcIdx = null;
+
+function renderOrder(){
+  const ul = document.getElementById('orderList');
+  ul.innerHTML = '';
+  orderItems.forEach((it, idx)=>{
+    const li = document.createElement('li');
+    li.draggable = true;
+    li.dataset.idx = idx;
+    li.textContent = it.text;
+    li.addEventListener('dragstart', e=>{
+      dragSrcIdx = idx;
+      li.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    li.addEventListener('dragend', ()=>{
+      li.classList.remove('dragging');
+      [...ul.children].forEach(c=>c.classList.remove('drag-over'));
+    });
+    li.addEventListener('dragover', e=>{
+      e.preventDefault();
+      [...ul.children].forEach(c=>c.classList.remove('drag-over'));
+      li.classList.add('drag-over');
+    });
+    li.addEventListener('drop', e=>{
+      e.preventDefault();
+      const target = +li.dataset.idx;
+      if (dragSrcIdx === null || dragSrcIdx === target) return;
+      const moved = orderItems.splice(dragSrcIdx, 1)[0];
+      orderItems.splice(target, 0, moved);
+      dragSrcIdx = null;
+      renderOrder();
+      const fb = document.getElementById('orderFeedback');
+      fb.textContent = ''; fb.className = 'feedback';
+    });
+    ul.appendChild(li);
+  });
+}
+function checkOrder(){
+  const got = orderItems.map(x=>x.id).join(',');
+  const fb = document.getElementById('orderFeedback');
+  if (got === correctOrder.join(',')){
+    fb.textContent = '正确！';
+    fb.className = 'feedback ok';
+    setTimeout(()=>setActive('step-conditions'), 500);
+  } else {
+    errorLog.order.wrongCount++;
+    errorLog.order.wrongChoices.push(orderItems.map(x=>x.text));
+    fb.textContent = '顺序不正确，请再调整。';
+    fb.className = 'feedback bad';
+  }
+}
+
+/* ========================================================
+   步骤二：温度
+   ======================================================== */
+['t1','t2','t3'].forEach(id=>{
+  const s = document.getElementById(id);
+  const v = document.getElementById(id+'v');
+  s.addEventListener('input', ()=> {
+    v.textContent = s.value;
+    const fb = document.getElementById('tempFeedback');
+    fb.textContent = ''; fb.className = 'feedback';
+  });
+});
+function checkTemps(){
+  const t1 = +document.getElementById('t1').value;
+  const t2 = +document.getElementById('t2').value;
+  const t3 = +document.getElementById('t3').value;
+  const fb = document.getElementById('tempFeedback');
+  if (t1===95 && t2>=55 && t2<=68 && t3===72){
+    fb.textContent = '温度全部正确！';
+    fb.className = 'feedback ok';
+    setTimeout(()=>{ setActive('step-purpose'); renderPurpose(); }, 500);
+  } else {
+    errorLog.temps.wrongCount++;
+    errorLog.temps.wrongChoices.push({变性:t1, 退火:t2, 延伸:t3});
+    fb.textContent = '温度尚未全部正确，请继续调整。';
+    fb.className = 'feedback bad';
+  }
+}
+
+/* ========================================================
+   步骤三：每步目的
+   ======================================================== */
+const purposes = [
+  { step:'变性', options:[
+      { text:'使 DNA 双链间的氢键断裂，双链解开为单链', correct:true },
+      { text:'使引物与模板结合', correct:false },
+      { text:'使 DNA 聚合酶催化合成子链', correct:false },
+      { text:'使两条单链重新结合', correct:false }
+    ]},
+  { step:'退火', options:[
+      { text:'使 DNA 双链彻底解开', correct:false },
+      { text:'使引物与模板单链上的互补区段结合', correct:true },
+      { text:'使聚合酶催化磷酸二酯键形成', correct:false },
+      { text:'使 dNTP 直接连成长链', correct:false }
+    ]},
+  { step:'延伸', options:[
+      { text:'使氢键断裂', correct:false },
+      { text:'使引物从模板上脱离', correct:false },
+      { text:"在聚合酶作用下，以 dNTP 为原料、沿 5'→3' 方向合成新链", correct:true },
+      { text:'随机连接 dNTP 形成 DNA', correct:false }
+    ]}
+];
+let purposeChoice = [null,null,null];
+function renderPurpose(){
+  const wrap = document.getElementById('purposeBlock');
+  wrap.innerHTML = '';
+  purposeChoice = [null,null,null];
+  purposes.forEach((p, pi)=>{
+    const div = document.createElement('div');
+    div.innerHTML = `<div><b>${p.step}的目的：</b></div>`;
+    const sel = document.createElement('select');
+    sel.className = 'purpose-sel';
+    const placeholder = document.createElement('option');
+    placeholder.value = ''; placeholder.textContent = '— 请选择 —';
+    placeholder.disabled = true; placeholder.selected = true;
+    sel.appendChild(placeholder);
+    p.options.forEach((op, oi)=>{
+      const o = document.createElement('option');
+      o.value = oi; o.textContent = op.text;
+      sel.appendChild(o);
+    });
+    sel.addEventListener('change', ()=>{
+      purposeChoice[pi] = +sel.value;
+      const fb = document.getElementById('purposeFeedback');
+      fb.textContent = ''; fb.className = 'feedback';
+    });
+    div.appendChild(sel);
+    wrap.appendChild(div);
+  });
+}
+function checkPurpose(){
+  const fb = document.getElementById('purposeFeedback');
+  let allRight = true;
+  const wrongHere = [];
+  purposes.forEach((p, pi)=>{
+    const oi = purposeChoice[pi];
+    if (oi === null || !p.options[oi].correct){
+      allRight = false;
+      wrongHere.push({ step: p.step, picked: oi===null ? '(未选)' : p.options[oi].text });
+    }
+  });
+  if (allRight){
+    fb.textContent = '全部正确！';
+    fb.className = 'feedback ok';
+    setTimeout(()=>{ setActive('step-primer'); renderPrimers(); }, 500);
+  } else {
+    errorLog.purpose.wrongCount++;
+    errorLog.purpose.wrongChoices.push(wrongHere);
+    fb.textContent = '有未选或选错的项，请检查。';
+    fb.className = 'feedback bad';
+  }
+}
+
+/* ========================================================
+   步骤四：引物
+   上链 5'-ATGCGT…ACGTAC-3'
+   下链 3'-TACGCA…TGCATG-5'
+   引物1（与下链左端 TACGCA 互补，新合成上链）：5'-ATGCGT-3'
+   引物2（与上链右端 ACGTAC 互补，新合成下链）：5'-GTACGT-3'
+   ======================================================== */
+const primerOptions = [
+  { seq:"5'-ATGCGT-3'", correct:true },
+  { seq:"5'-GTACGT-3'", correct:true },
+  { seq:"5'-TGCGTA-3'", correct:false },
+  { seq:"5'-CATGCA-3'", correct:false }
+];
+let primerSelected = new Set();
+function renderPrimers(){
+  const wrap = document.getElementById('primerOptions');
+  wrap.innerHTML = '';
+  primerSelected.clear();
+  primerOptions.forEach((p, i)=>{
+    const b = document.createElement('button');
+    b.className = 'option';
+    b.textContent = p.seq;
+    b.onclick = ()=>{
+      if (primerSelected.has(i)){
+        primerSelected.delete(i); b.classList.remove('selected');
+      } else {
+        if (primerSelected.size >= 2) return;
+        primerSelected.add(i); b.classList.add('selected');
+      }
+      const fb = document.getElementById('primerFeedback');
+      fb.textContent = ''; fb.className = 'feedback';
+    };
+    wrap.appendChild(b);
+  });
+}
+function checkPrimers(){
+  const fb = document.getElementById('primerFeedback');
+  if (primerSelected.size !== 2){
+    fb.textContent = '请选择 2 个引物。';
+    fb.className = 'feedback bad';
+    return;
+  }
+  let allRight = true;
+  primerSelected.forEach(i=>{ if (!primerOptions[i].correct) allRight = false; });
+  if (allRight){
+    fb.textContent = '正确！可以开始 PCR 循环。';
+    fb.className = 'feedback ok';
+    setTimeout(()=>{ setActive('step-cycles'); showParentDNA(); }, 500);
+  } else {
+    errorLog.primer.wrongCount++;
+    errorLog.primer.wrongChoices.push([...primerSelected].map(i=>primerOptions[i].seq));
+    fb.textContent = '引物选择不正确，请再试。';
+    fb.className = 'feedback bad';
+  }
+}
+
+/* ========================================================
+   步骤六：思考题（可重选，确认后判分）
+   ======================================================== */
+const quizOpts = [
+  { text:'2n', correct:false },
+  { text:'n²', correct:false },
+  { text:'2ⁿ', correct:true },
+  { text:'2(n+1)', correct:false }
+];
+let quizSelected = null;
+let quizAnswered = false;
+
+function renderQuiz(){
+  quizSelected = null;
+  quizAnswered = false;
+  const wrap = document.getElementById('quizOptions');
+  wrap.innerHTML = '';
+  document.getElementById('summaryBtn').disabled = true;
+  quizOpts.forEach((o, i)=>{
+    const b = document.createElement('button');
+    b.className = 'option';
+    b.textContent = o.text;
+    b.onclick = ()=>{
+      if (quizAnswered) return;
+      quizSelected = i;
+      [...wrap.querySelectorAll('button')].forEach(x=>x.classList.remove('selected'));
+      b.classList.add('selected');
+      const fb = document.getElementById('quizFeedback');
+      fb.textContent = ''; fb.className = 'feedback';
+    };
+    wrap.appendChild(b);
+  });
+}
+
+function checkQuiz(){
+  const fb = document.getElementById('quizFeedback');
+  if (quizSelected === null){
+    fb.textContent = '请先选择一个答案。';
+    fb.className = 'feedback bad';
+    return;
+  }
+  const wrap = document.getElementById('quizOptions');
+  const btns = [...wrap.querySelectorAll('button')];
+  const o = quizOpts[quizSelected];
+  if (o.correct){
+    quizAnswered = true;
+    btns.forEach(b=>b.classList.remove('selected'));
+    btns[quizSelected].classList.add('correct');
+    fb.textContent = '回答正确！';
+    fb.className = 'feedback ok';
+    document.getElementById('summaryBtn').disabled = false;
+  } else {
+    errorLog.quiz.wrongCount++;
+    errorLog.quiz.wrongChoices.push(o.text);
+    btns[quizSelected].classList.remove('selected');
+    btns[quizSelected].classList.add('wrong');
+    setTimeout(()=>btns[quizSelected].classList.remove('wrong'), 800);
+    fb.textContent = '不正确，再想一想，可重新选择。';
+    fb.className = 'feedback bad';
+    quizSelected = null;
+  }
+}
+
+/* ========================================================
+   总结弹层（生物老师视角的点评）
+   ======================================================== */
+
+// 第一步：根据具体的错误顺序给出针对性建议
+function adviceOrder(wrongList){
+  if (wrongList.length === 0) return null;
+  const tips = new Set();
+  wrongList.forEach(seq => {
+    const text = seq.join(' → ');
+    // 把每个错序列翻译成它对 A/B/C 的排列
+    const ids = seq.map(t => t.startsWith('退火')?'A' : t.startsWith('变性')?'B' : 'C').join('');
+    if (ids[0] === 'A') tips.add('把"退火"放在了最前面：先要有变性把双链解开成单链，引物才有可能结合到模板上，所以"变性"必须在"退火"之前。');
+    if (ids[0] === 'C') tips.add('把"延伸"放在了最前面：还没有引物作为起始点，DNA 聚合酶无法开始合成，所以延伸不能在退火之前。');
+    if (ids.indexOf('C') < ids.indexOf('A')) tips.add('"延伸"出现在了"退火"之前：聚合酶必须在引物已经结合到模板之后才能催化合成新链，所以延伸必须排在退火之后。');
+    if (ids === 'BCA') tips.add('"延伸"和"退火"颠倒：可记忆口诀"高温变性 → 低温退火 → 中温延伸"，温度由高到低再回升。');
+  });
+  return [...tips].join(' ');
+}
+
+// 第二步：基于温度具体值给出针对性诊断
+function adviceTemps(wrongList){
+  if (wrongList.length === 0) return null;
+  const tips = new Set();
+  wrongList.forEach(c => {
+    if (c.变性 < 90) tips.add(`变性温度选了 ${c.变性}℃ 偏低：温度不够高，氢键不能充分断裂，DNA 双链解不开，后面的步骤就无从谈起。变性应当在 90~95℃。`);
+    if (c.变性 > 95) tips.add(`变性温度选了 ${c.变性}℃ 偏高：会使 Taq DNA 聚合酶失活，标准做法是 95℃ 即可。`);
+    if (c.退火 < 55) tips.add(`退火温度选了 ${c.退火}℃ 偏低：温度过低会让引物与模板的非特异结合增多，扩增出非目的片段。退火一般在 55–68℃。`);
+    if (c.退火 > 68) tips.add(`退火温度选了 ${c.退火}℃ 偏高：温度高于引物的 Tm，引物难以与模板结合，无法启动合成。退火应在 55–68℃。`);
+    if (c.延伸 !== 72){
+      if (c.延伸 < 70) tips.add(`延伸温度选了 ${c.延伸}℃ 偏低：低于 Taq 酶的最适温度，合成速度慢且容易出错。延伸的标准温度是 72℃。`);
+      if (c.延伸 > 75) tips.add(`延伸温度选了 ${c.延伸}℃ 偏高：会降低 Taq 酶活性。延伸的标准温度是 72℃，这是 Taq 酶活性最强的温度。`);
+    }
+  });
+  if (tips.size === 0) tips.add('请按"变性 95℃、退火 55–68℃、延伸 72℃"三档对照思考各阶段为什么需要这个温度。');
+  return [...tips].join(' ');
+}
+
+// 第三步：根据每个子题的错误选项给出概念辨析
+function advicePurpose(wrongList){
+  if (wrongList.length === 0) return null;
+  const tips = new Set();
+  wrongList.forEach(arr => {
+    arr.forEach(w => {
+      const p = w.picked;
+      if (w.step === '变性'){
+        if (p.includes('引物与模板结合')) tips.add('变性≠退火：变性是把双链解开成单链，"引物与模板结合"是退火阶段的事。');
+        else if (p.includes('催化合成子链')) tips.add('变性阶段并没有合成子链：合成发生在 72℃ 的延伸阶段，由 Taq DNA 聚合酶完成。');
+        else if (p.includes('两条单链重新结合')) tips.add('刚好相反：变性是让双链分开，而不是让它们重新结合。');
+        else tips.add('变性的本质是：高温破坏碱基间的氢键，使 DNA 双链解开为两条单链。');
+      }
+      if (w.step === '退火'){
+        if (p.includes('彻底解开')) tips.add('彻底解开是变性做的事，退火是降温让引物与模板的互补区段结合。');
+        else if (p.includes('磷酸二酯键')) tips.add('磷酸二酯键的形成发生在延伸阶段（聚合酶催化），退火阶段引物只是与模板靠氢键互补结合。');
+        else if (p.includes('dNTP 直接连成长链')) tips.add('退火阶段没有合成新链；DNA 是以模板链为指导、由聚合酶催化合成的，不会让 dNTP 自己连起来。');
+        else tips.add('退火 = 引物找位置：引物与模板单链 3\' 端的互补区段以氢键结合。');
+      }
+      if (w.step === '延伸'){
+        if (p.includes('氢键断裂')) tips.add('氢键断裂是变性阶段的事；延伸阶段是合成新链。');
+        else if (p.includes('引物从模板上脱离')) tips.add('恰恰相反：延伸时引物作为起始端不会脱落，聚合酶就是从引物 3\' 端继续往前加碱基。');
+        else if (p.includes('随机连接')) tips.add('合成不是随机的：必须以模板链为指导，按碱基互补配对原则一个一个加 dNTP。');
+        else tips.add('延伸的关键：以 dNTP 为原料，沿 5\'→3\' 方向、按互补配对在引物 3\' 端继续合成新链。');
+      }
+    });
+  });
+  return [...tips].join(' ');
+}
+
+// 第四步：根据所选错误引物指出问题
+function advicePrimer(wrongList){
+  if (wrongList.length === 0) return null;
+  const tips = new Set();
+  wrongList.forEach(arr => {
+    arr.forEach(seq => {
+      // 正确：5'-ATGCGT-3'、5'-GTACGT-3'
+      if (seq === "5'-TGCGTA-3'") tips.add("选了 5'-TGCGTA-3'：这是把模板序列直接照抄（与上链 5' 端 ATGCGT 同序），并不是其互补链，无法和模板配对。引物必须与模板互补、反向。");
+      else if (seq === "5'-CATGCA-3'") tips.add('选了 5\'-CATGCA-3\'：方向不对——它是与模板互补但写反了的序列，违反了"引物书写遵循 5\'→3\'"的原则。书写时一定要按 5\'→3\' 的顺序。');
+      else if (!seq.startsWith("5'") || !seq.endsWith("3'")) tips.add('引物必须按 5\'→3\' 的方向书写。');
+    });
+  });
+  if (tips.size === 0) tips.add('引物的选择关键：与模板链反向互补，且引物自身按 5\'→3\' 书写，引物的 3\' 端要与模板链碱基配对。');
+  tips.add('正确的两条引物：5\'-ATGCGT-3\'（与下链 3\' 端 TACGCA 互补）与 5\'-GTACGT-3\'（与上链 3\' 端 ACGTAC 互补）。');
+  return [...tips].join(' ');
+}
+
+// 第六步：根据错误公式分析思维错误
+function adviceQuiz(wrongList){
+  if (wrongList.length === 0) return null;
+  const tips = new Set();
+  wrongList.forEach(ans => {
+    if (ans === '2n') tips.add('选了 2n：这是把"每次循环增加 2 个"误当成"线性增长"了。实际上每次循环 DNA 数量是翻倍，不是加 2。');
+    else if (ans === 'n²') tips.add('选了 n²：这是平方关系，不是指数关系。PCR 是每轮翻一番，应当是 2 的 n 次方。');
+    else if (ans === '2(n+1)') tips.add('选了 2(n+1)：仍然是线性公式。可以代入小数验证：n=1 应得 2 个，n=2 应得 4 个，n=3 应得 8 个，只有 2ⁿ 满足。');
+    else tips.add('PCR 每经过一轮循环，DNA 分子数量翻一倍。从 1 个出发，n 轮后是 2ⁿ 个。');
+  });
+  return [...tips].join(' ');
+}
+
+function showSummary(){
+  const body = document.getElementById('summaryBody');
+  body.innerHTML = '';
+
+  const totalErrors = Object.keys(errorLog).reduce((s,k)=>s + errorLog[k].wrongCount, 0);
+
+  // 总评（开场白）
+  const overall = document.createElement('div');
+  overall.className = 'summary-row ' + (totalErrors===0 ? 'ok' : '');
+  let openWord;
+  if (totalErrors === 0) openWord = '同学全程一次过关，对 PCR 的每个环节理解都很到位，继续保持！';
+  else if (totalErrors <= 2) openWord = '同学整体掌握得不错，只在个别细节上需要再打磨一下，下面我针对你出错的地方逐条点评。';
+  else if (totalErrors <= 5) openWord = '同学对 PCR 的整体框架已经建立起来，但在一些关键概念上还存在混淆，下面我针对你出错的环节逐条点评，认真看完再做一次会有明显提升。';
+  else openWord = '看得出来 PCR 的几个核心概念还需要重新梳理，下面我把你出错的地方逐条点出来，请对照重新理解，再做一次。';
+  overall.innerHTML = `<div class="lbl">老师的总体评价</div><div>共出现 ${totalErrors} 次错误。${openWord}</div>`;
+  body.appendChild(overall);
+
+  const sections = [
+    { key:'order',   label:'第一步 顺序排列',   advice: adviceOrder(errorLog.order.wrongChoices) },
+    { key:'temps',   label:'第二步 温度选择',   advice: adviceTemps(errorLog.temps.wrongChoices) },
+    { key:'purpose', label:'第三步 目的判断',   advice: advicePurpose(errorLog.purpose.wrongChoices) },
+    { key:'primer',  label:'第四步 引物选择',   advice: advicePrimer(errorLog.primer.wrongChoices) },
+    { key:'quiz',    label:'第六步 思考题',     advice: adviceQuiz(errorLog.quiz.wrongChoices) }
+  ];
+
+  sections.forEach(s=>{
+    const div = document.createElement('div');
+    const cnt = errorLog[s.key].wrongCount;
+    div.className = 'summary-row ' + (cnt===0 ? 'ok' : 'bad');
+    if (cnt === 0){
+      div.innerHTML = `<div class="lbl">${s.label}</div><div>一次答对。这一部分掌握扎实，给你点个赞。</div>`;
+    } else {
+      div.innerHTML = `<div class="lbl">${s.label}（错误 ${cnt} 次）</div><div>${s.advice}</div>`;
+    }
+    body.appendChild(div);
+  });
+
+  // 整体提升建议
+  const wrongKeys = sections.filter(s=>errorLog[s.key].wrongCount>0).map(s=>s.key);
+  if (wrongKeys.length > 0){
+    const reco = document.createElement('div');
+    reco.className = 'summary-row';
+    const recos = [];
+    if (wrongKeys.includes('order') || wrongKeys.includes('temps') || wrongKeys.includes('purpose'))
+      recos.push('把"温度—事件—目的"三者一一对应起来记：95℃ 断氢键（变性）→ 55–68℃ 引物配对（退火）→ 72℃ Taq 酶合成（延伸）。');
+    if (wrongKeys.includes('purpose') || wrongKeys.includes('primer'))
+      recos.push('牢记 DNA 复制的两个铁律：碱基互补配对（A-T、G-C）；新链只能沿 5\'→3\' 方向延长。');
+    if (wrongKeys.includes('primer'))
+      recos.push('做引物题时，先把模板按 5\'→3\' 写清楚，再写出与之互补反向的链，最后取末端 6 个碱基即可。');
+    if (wrongKeys.includes('quiz'))
+      recos.push('涉及指数增长的题目可以先代入 n=1、2、3 验证：1 个分子 → 2 → 4 → 8，正好对应 2¹、2²、2³，公式即 2ⁿ。');
+    recos.push('建议关闭本窗口后点击"重新开始"，再过一遍流程，把刚才薄弱的环节再确认一次。');
+    reco.innerHTML = `<div class="lbl">老师的提升建议</div><ul style="margin:6px 0 0 18px;padding:0;">${recos.map(r=>'<li>'+r+'</li>').join('')}</ul>`;
+    body.appendChild(reco);
+  }
+
+  document.getElementById('summaryModal').classList.add('show');
+}
+function closeSummary(){
+  document.getElementById('summaryModal').classList.remove('show');
+}
+function restartAll(){
+  closeSummary();
+  // 重置错误日志
+  Object.keys(errorLog).forEach(k=>{
+    errorLog[k].wrongCount = 0;
+    errorLog[k].wrongChoices = [];
+  });
+  // 重置各步骤状态
+  // 顺序：恢复初始顺序
+  orderItems.length = 0;
+  orderItems.push(
+    { id:'A', text:'退火（引物结合模板）' },
+    { id:'B', text:'变性（双链解开）' },
+    { id:'C', text:'延伸（聚合形成新链）' }
+  );
+  renderOrder();
+  document.getElementById('orderFeedback').textContent = '';
+  // 温度：复位
+  ['t1','t2','t3'].forEach(id=>{
+    document.getElementById(id).value = 70;
+    document.getElementById(id+'v').textContent = 70;
+  });
+  document.getElementById('tempFeedback').textContent = '';
+  // 目的：清空
+  document.getElementById('purposeBlock').innerHTML = '';
+  purposeChoice = [null,null,null];
+  document.getElementById('purposeFeedback').textContent = '';
+  // 引物：清空
+  document.getElementById('primerOptions').innerHTML = '';
+  primerSelected.clear();
+  document.getElementById('primerFeedback').textContent = '';
+  // 循环：复位
+  cycle = 0; count = 1; phase = 'idle'; paused = false; resumeWaiters = [];
+  document.getElementById('cycleNum').textContent = '0';
+  document.getElementById('phaseText').textContent = '尚未开始';
+  document.getElementById('cycleFeedback').textContent = '';
+  // 思考题：清空
+  document.getElementById('quizOptions').innerHTML = '';
+  document.getElementById('quizFeedback').textContent = '';
+  document.getElementById('summaryBtn').disabled = true;
+  // 舞台
+  clearStage();
+  setStageSize(360);
+  setTitle('请先在左侧完成步骤', '');
+  setCycleCounter(0);
+  // 回到第一步
+  setActive('step-order');
+}
+
+/* ========================================================
+   SVG 工具
+   ======================================================== */
+const stage = document.getElementById('stage');
+
+function setStageSize(h){
+  stage.setAttribute('viewBox', `0 0 ${STAGE_VIEW_W} ${h}`);
+  stage.style.height = h + 'px';
+}
+function clearStage(){ while (stage.firstChild) stage.removeChild(stage.firstChild); }
+function setTitle(t, sub){
+  document.getElementById('stageTitle').textContent = t;
+  document.getElementById('stageSub').textContent = sub || '';
+}
+function setCycleCounter(n){ document.getElementById('cycleCounter').textContent = '循环 ' + n; }
+
+function el(tag, attrs){
+  const e = document.createElementNS(SVG_NS, tag);
+  if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function delay(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+function drawBase(parent, x, y, ch, fill){
+  const g = el('g', { transform:`translate(${x},${y})` });
+  g.appendChild(el('rect',{ width:BASE_W, height:BASE_H, rx:3, fill: fill||'#cfe3f5', stroke:'#5b8bb0' }));
+  const t = el('text',{ x:BASE_W/2, y:BASE_H/2+4, 'text-anchor':'middle',
+    'font-family':'Courier New, monospace','font-size':13,'font-weight':'bold' });
+  t.textContent = ch;
+  g.appendChild(t);
+  parent.appendChild(g);
+  return g;
+}
+function drawLine(parent, x1, y1, x2, y2, color, dash){
+  const a = { x1, y1, x2, y2, stroke: color || '#1f4e79', 'stroke-width':3 };
+  if (dash) a['stroke-dasharray'] = dash;
+  const l = el('line', a);
+  parent.appendChild(l);
+  return l;
+}
+function drawText(parent, x, y, txt, fill){
+  const t = el('text',{ x, y, 'font-family':'Courier New, monospace','font-size':12, fill: fill||'#1f4e79' });
+  t.textContent = txt;
+  parent.appendChild(t);
+  return t;
+}
+
+/* ========================================================
+   绘制一条单链（左端 6 碱基 + 中间直线 + 右端 6 碱基）
+   parent: 父 g
+   y: 此单链在父容器内的 y 起点（碱基矩形顶部）
+   leftSeq, rightSeq: 端点 6 碱基（按画面左到右）
+   labelLeft, labelRight: 末端方向标签（如 "5'", "3'"）
+   color: 碱基填充色
+   lineColor: 中间线颜色
+   返回 { row: g, leftBases, rightBases, midLine }
+   ======================================================== */
+function drawStrand(parent, y, leftSeq, rightSeq, labelLeft, labelRight, color, lineColor){
+  const g = el('g',{});
+  parent.appendChild(g);
+  drawText(g, -16, y+15, labelLeft);
+  drawText(g, DNA_W+4, y+15, labelRight);
+  const leftBases = [];
+  for (let i=0;i<SIDE_BASES;i++){
+    leftBases.push(drawBase(g, i*BASE_W, y, leftSeq[i], color));
+  }
+  const midStart = SIDE_BASES*BASE_W;
+  const midEnd = midStart + MIDDLE_LEN;
+  const midLine = drawLine(g, midStart, y+BASE_H/2, midEnd, y+BASE_H/2, lineColor);
+  const rightBases = [];
+  for (let i=0;i<SIDE_BASES;i++){
+    rightBases.push(drawBase(g, midEnd + i*BASE_W, y, rightSeq[i], color));
+  }
+  return { g, leftBases, rightBases, midLine };
+}
+
+/* ========================================================
+   DNA 容器（在动画/静态阶段使用相同结构）
+   ======================================================== */
+function makeDNAContainer(layoutX, layoutY){
+  const g = el('g',{ transform:`translate(${layoutX},${layoutY})` });
+  stage.appendChild(g);
+  return g;
+}
+
+/* 在容器中绘制配对状态的双链（用于亲本 / 静态展示） */
+function drawPairedDNA(container){
+  const top = drawStrand(container, Y_TOP_PAIRED, TOP_LEFT_53, TOP_RIGHT_53, "5'", "3'", '#cfe3f5', '#1f4e79');
+  const bot = drawStrand(container, Y_BOT_PAIRED, BOT_LEFT_35, BOT_RIGHT_35, "3'", "5'", '#fde4b8', '#a06a1f');
+  return { top, bot };
+}
+
+/* ========================================================
+   动画核心：对单个 DNA 进行 变性→退火→延伸
+   handle: { container, top, bot }
+   ======================================================== */
+let paused = false;
+let resumeWaiters = [];
+function waitIfPaused(){
+  if (!paused) return Promise.resolve();
+  return new Promise(res => resumeWaiters.push(res));
+}
+function setPaused(v){
+  paused = v;
+  if (!paused){
+    const ws = resumeWaiters; resumeWaiters = [];
+    ws.forEach(w=>w());
+  }
+}
+
+function tween(dur, onUpdate){
+  return new Promise(resolve=>{
+    let acc = 0;
+    let last = performance.now();
+    function step(now){
+      if (paused){
+        // 等待恢复，恢复后从 now 重置 last
+        waitIfPaused().then(()=>{
+          last = performance.now();
+          requestAnimationFrame(step);
+        });
+        return;
+      }
+      acc += (now - last);
+      last = now;
+      const k = Math.min(1, acc/dur);
+      const e = 1 - Math.pow(1-k, 3);
+      onUpdate(e);
+      if (k<1) requestAnimationFrame(step);
+      else resolve();
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+async function pausableDelay(ms){
+  // 切片，每片可被暂停
+  const slice = 40;
+  let elapsed = 0;
+  while (elapsed < ms){
+    if (paused) await waitIfPaused();
+    const t = Math.min(slice, ms - elapsed);
+    await new Promise(r=>setTimeout(r, t));
+    elapsed += t;
+  }
+}
+
+/* 把单链 g 的所有元素从 y0 平移到 y1 */
+async function moveStrandY(strand, fromY, toY, dur){
+  // 重新设置每个元素的 y 属性（碱基 group 是 translate，line 与 text 用 y 属性）
+  await tween(dur, e=>{
+    const y = fromY + (toY-fromY)*e;
+    // 上面 drawStrand 时碱基的 transform y 就是 fromY；line/text 的 y 也基于 fromY
+    [...strand.leftBases, ...strand.rightBases].forEach((bg, i)=>{
+      const m = bg.getAttribute('transform').match(/translate\(([-\d.]+),([-\d.]+)\)/);
+      const x0 = +m[1];
+      bg.setAttribute('transform', `translate(${x0},${y})`);
+    });
+    // 中间线
+    strand.midLine.setAttribute('y1', y + BASE_H/2);
+    strand.midLine.setAttribute('y2', y + BASE_H/2);
+    // 端部 5'/3' 文本
+    const texts = strand.g.querySelectorAll('text');
+    // 跳过碱基里的字符，那些在 leftBases/rightBases group 内部不在 strand.g 直接子级
+    texts.forEach(t=>{
+      // 只对直接子节点的端部文本设 y
+      if (t.parentNode === strand.g){
+        t.setAttribute('y', y + 15);
+      }
+    });
+  });
+}
+
+/* 对一个配对 DNA 做变性：上链上移到 Y_TOP_DENATURED，下链下移到 Y_BOT_DENATURED */
+async function animateDenature(h){
+  await Promise.all([
+    moveStrandY(h.top, Y_TOP_PAIRED, Y_TOP_DENATURED, 800),
+    moveStrandY(h.bot, Y_BOT_PAIRED, Y_BOT_DENATURED, 800)
+  ]);
+}
+
+/* 退火：在容器内画两条引物（每条 6 个碱基），逐个出现
+   引物 P1：以下链(BOT_LEFT_35)为模板，新链 = ATGCGT，画在 Y_NEW_FROM_BOT 的左端
+   引物 P2：以上链(TOP_RIGHT_53)为模板，新链 = TGCATG，画在 Y_NEW_FROM_TOP 的右端
+   位置：
+     P1（下链左端，Y_NEW_FROM_BOT，x = 0..6*BW）
+       与下链左端 BOT_LEFT_35 互补 → 每个 i 位置画 COMPLEMENT(BOT_LEFT_35[i])
+     P2（上链右端，Y_NEW_FROM_TOP，x = midEnd..midEnd+6*BW）
+       与上链右端 TOP_RIGHT_53 互补 → 每个 i 位置画 COMPLEMENT(TOP_RIGHT_53[i])
+*/
+async function animateAnneal(h){
+  const c = h.container;
+  // 给两个引物都创建一个 g，并把它们存到 handle 上，以便延伸时使用
+  const primerColor = '#b6e3c6';
+  const midEnd = SIDE_BASES*BASE_W + MIDDLE_LEN;
+
+  h.primer1G = el('g',{}); c.appendChild(h.primer1G); // 下端单链上面，新合成上链的 5' 端
+  h.primer2G = el('g',{}); c.appendChild(h.primer2G); // 上端单链下面，新合成下链的 5' 端
+
+  // 引物 1：位于 Y_NEW_FROM_BOT，左端 6 个碱基；标注 5'(左) 3'(右)
+  drawText(h.primer1G, -16, Y_NEW_FROM_BOT+15, "5'", '#2d8659');
+  drawText(h.primer1G,  6*BASE_W+2, Y_NEW_FROM_BOT+15, "3'", '#2d8659');
+  const p1Bases = [];
+  for (let i=0;i<SIDE_BASES;i++){
+    const ch = COMPLEMENT[BOT_LEFT_35[i]]; // ATGCGT 按位置
+    const g = drawBase(h.primer1G, i*BASE_W, Y_NEW_FROM_BOT, ch, primerColor);
+    g.setAttribute('opacity','0');
+    p1Bases.push(g);
+  }
+  h.primer1Bases = p1Bases;
+
+  // 引物 2：位于 Y_NEW_FROM_TOP，右端 6 个碱基；标注 3'(左) 5'(右)
+  drawText(h.primer2G, midEnd-12, Y_NEW_FROM_TOP+15, "3'", '#2d8659');
+  drawText(h.primer2G, midEnd + 6*BASE_W + 4, Y_NEW_FROM_TOP+15, "5'", '#2d8659');
+  const p2Bases = [];
+  for (let i=0;i<SIDE_BASES;i++){
+    const ch = COMPLEMENT[TOP_RIGHT_53[i]]; // TGCATG 按位置
+    const g = drawBase(h.primer2G, midEnd + i*BASE_W, Y_NEW_FROM_TOP, ch, primerColor);
+    g.setAttribute('opacity','0');
+    p2Bases.push(g);
+  }
+  h.primer2Bases = p2Bases;
+
+  // 逐个出现
+  for (let i=0;i<SIDE_BASES;i++){
+    p1Bases[i].setAttribute('opacity','1');
+    p2Bases[i].setAttribute('opacity','1');
+    await pausableDelay(160);
+  }
+}
+
+/* 延伸：从引物 3' 端开始向另一端合成
+   引物 1 的 3' 端在右（位置 x = 6*BW），新链向右生长直至 midEnd + 6*BW
+     - 中间直线从 6*BW 长到 midEnd
+     - 然后右端 6 个碱基在 midEnd..midEnd+6*BW 处逐个出现，对应 COMPLEMENT(BOT_RIGHT_35[i])
+   引物 2 的 3' 端在左（位置 x = midEnd），新链向左生长直至 0
+     - 中间直线从 midEnd 长到 6*BW（向左）
+     - 然后左端 6 个碱基在 0..6*BW 处逐个出现，对应 COMPLEMENT(TOP_LEFT_53[i])
+*/
+async function animateExtend(h){
+  const c = h.container;
+  const midStart = SIDE_BASES*BASE_W;
+  const midEnd = midStart + MIDDLE_LEN;
+
+  // 创建两条新链的延伸 group
+  h.ext1G = el('g',{}); c.appendChild(h.ext1G);
+  h.ext2G = el('g',{}); c.appendChild(h.ext2G);
+
+  // 中间线起点
+  const y1 = Y_NEW_FROM_BOT + BASE_H/2;
+  const y2 = Y_NEW_FROM_TOP + BASE_H/2;
+  const line1 = drawLine(h.ext1G, midStart, y1, midStart, y1, '#2d8659');
+  const line2 = drawLine(h.ext2G, midEnd, y2, midEnd, y2, '#2d8659');
+
+  // 一并生长两条线
+  await tween(1100, e=>{
+    line1.setAttribute('x2', midStart + MIDDLE_LEN*e);
+    line2.setAttribute('x2', midEnd - MIDDLE_LEN*e);
+  });
+
+  // 端部碱基逐个加上
+  // 新链 1 的右端：与 BOT_RIGHT_35 互补 → ATGCAC? 让我们直接 COMPLEMENT(BOT_RIGHT_35[i]) = TOP_RIGHT_53[i]
+  for (let i=0;i<SIDE_BASES;i++){
+    const x = midEnd + i*BASE_W;
+    const ch = COMPLEMENT[BOT_RIGHT_35[i]];
+    const g = drawBase(h.ext1G, x, Y_NEW_FROM_BOT, ch, '#b6e3c6');
+    g.setAttribute('opacity','0');
+    requestAnimationFrame(()=>g.setAttribute('opacity','1'));
+
+    // 新链 2 的左端：与 TOP_LEFT_53 互补 → 注意从右向左添加
+    // 新链 2 是 5'→3' 从右到左，3' 端正在向左前进，所以越靠左越后添加
+    const j = SIDE_BASES - 1 - i;
+    const x2 = j*BASE_W;
+    const ch2 = COMPLEMENT[TOP_LEFT_53[j]];
+    const g2 = drawBase(h.ext2G, x2, Y_NEW_FROM_TOP, ch2, '#b6e3c6');
+    g2.setAttribute('opacity','0');
+    requestAnimationFrame(()=>g2.setAttribute('opacity','1'));
+
+    await pausableDelay(180);
+  }
+}
+
+/* ========================================================
+   布局：n 个 DNA 在动画 / 静态时的位置
+   ======================================================== */
+function layoutPositions(n, boxH){
+  // 每行最多 2 个
+  const perRow = Math.min(n, 2);
+  const colW = DNA_W + 60;
+  const totalRowW = perRow*colW;
+  const startX = Math.max(40, (STAGE_VIEW_W - totalRowW)/2 + 20);
+  const rows = Math.ceil(n / perRow);
+  const positions = [];
+  for (let i=0;i<n;i++){
+    const r = Math.floor(i/perRow);
+    const c = i%perRow;
+    positions.push({ x: startX + c*colW, y: 20 + r*boxH });
+  }
+  return { positions, totalH: 20 + rows*boxH + 40 };
+}
+
+/* 静态渲染 n 个配对 DNA */
+function renderStatic(n){
+  clearStage();
+  const { positions, totalH } = layoutPositions(n, STATIC_BOX_H);
+  setStageSize(Math.max(360, totalH));
+  positions.forEach(p=>{
+    const c = makeDNAContainer(p.x, p.y);
+    drawPairedDNA(c);
+  });
+}
+
+/* ========================================================
+   状态与循环（支持单步 / 自动 / 暂停）
+   ======================================================== */
+let cycle = 0;
+let count = 1;
+let busy = false;
+let phase = 'idle';   // idle | denature | anneal | extend | done
+let curHandles = [];
+
+function setPhaseText(t){
+  document.getElementById('phaseText').textContent = t;
+}
+function updateButtons(){
+  const stepBtn  = document.getElementById('stepBtn');
+  const autoBtn  = document.getElementById('autoBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  if (busy){
+    stepBtn.disabled = true;
+    autoBtn.disabled = true;
+    pauseBtn.disabled = false;
+    pauseBtn.textContent = paused ? '继续' : '暂停';
+  } else {
+    pauseBtn.disabled = true;
+    pauseBtn.textContent = '暂停';
+    if (cycle >= 3 && phase === 'idle'){
+      stepBtn.disabled = true;
+      autoBtn.disabled = true;
+    } else {
+      stepBtn.disabled = false;
+      autoBtn.disabled = (phase !== 'idle'); // 在循环中途不能用"自动播放本轮"，避免冲突
+    }
+  }
+}
+
+function showParentDNA(){
+  cycle = 0;
+  count = 1;
+  phase = 'idle';
+  paused = false;
+  resumeWaiters = [];
+  setCycleCounter(0);
+  setTitle('亲本 DNA 分子', '两端展示碱基序列，中间序列用直线表示。');
+  setPhaseText('尚未开始');
+  document.getElementById('cycleNum').textContent = '0';
+  renderStatic(1);
+  updateButtons();
+}
+
+function togglePause(){
+  if (!busy) return;
+  setPaused(!paused);
+  updateButtons();
+}
+
+/* 准备一轮的 handles：渲染当前 count 个配对 DNA */
+function prepareRound(){
+  const inputN = count;
+  const { positions, totalH } = layoutPositions(inputN, ANIM_BOX_H);
+  clearStage();
+  setStageSize(totalH);
+  curHandles = positions.map(p=>{
+    const container = makeDNAContainer(p.x, p.y);
+    const { top, bot } = drawPairedDNA(container);
+    return { container, top, bot };
+  });
+}
+
+async function doDenature(){
+  setTitle(`循环 ${cycle+1}：变性（95℃）`, '双链分开成两条单链');
+  setPhaseText('变性');
+  await pausableDelay(300);
+  await Promise.all(curHandles.map(animateDenature));
+  await pausableDelay(200);
+}
+async function doAnneal(){
+  setTitle(`循环 ${cycle+1}：退火（55–68℃）`, "引物与模板单链 3' 端互补区段结合");
+  setPhaseText('退火');
+  await Promise.all(curHandles.map(animateAnneal));
+  await pausableDelay(200);
+}
+async function doExtend(){
+  setTitle(`循环 ${cycle+1}：延伸（72℃）`, "DNA 聚合酶以 dNTP 为原料，沿 5'→3' 方向合成新链");
+  setPhaseText('延伸');
+  await Promise.all(curHandles.map(animateExtend));
+  await pausableDelay(400);
+}
+async function finishRound(){
+  cycle += 1;
+  count = curHandles.length * 2;
+  setTitle(`循环 ${cycle} 完成：共 ${count} 个 DNA 分子`, '');
+  setPhaseText('已完成 ' + cycle + ' 次循环');
+  setCycleCounter(cycle);
+  document.getElementById('cycleNum').textContent = cycle;
+  await pausableDelay(300);
+  renderStatic(count);
+  curHandles = [];
+}
+
+/* 单步推进 */
+async function nextStep(){
+  if (busy) return;
+  if (cycle >= 3){
+    return;
+  }
+  busy = true; updateButtons();
+  try {
+    if (phase === 'idle'){
+      prepareRound();
+      await doDenature();
+      phase = 'anneal';
+    } else if (phase === 'anneal'){
+      await doAnneal();
+      phase = 'extend';
+    } else if (phase === 'extend'){
+      await doExtend();
+      await finishRound();
+      phase = 'idle';
+    }
+  } finally {
+    busy = false;
+    if (cycle >= 3 && phase === 'idle'){
+      const fb = document.getElementById('cycleFeedback');
+      fb.textContent = '已完成 3 次循环，请进入下一题。';
+      fb.className = 'feedback ok';
+      updateButtons();
+      setTimeout(()=>{ setActive('step-quiz'); renderQuiz(); }, 600);
+      return;
+    }
+    updateButtons();
+  }
+}
+
+/* 自动播放本轮（必须从 idle 状态开始） */
+async function runFullCycle(){
+  if (busy || phase !== 'idle' || cycle >= 3) return;
+  busy = true; updateButtons();
+  try {
+    prepareRound();
+    await doDenature();
+    await doAnneal();
+    await doExtend();
+    await finishRound();
+    phase = 'idle';
+  } finally {
+    busy = false;
+    if (cycle >= 3){
+      const fb = document.getElementById('cycleFeedback');
+      fb.textContent = '已完成 3 次循环，请进入下一题。';
+      fb.className = 'feedback ok';
+      updateButtons();
+      setTimeout(()=>{ setActive('step-quiz'); renderQuiz(); }, 600);
+      return;
+    }
+    updateButtons();
+  }
+}
+
+/* ========================================================
+   初始化
+   ======================================================== */
+renderStepper();
+renderOrder();
+setStageSize(360);
+setTitle('请先在左侧完成步骤', '');
+setCycleCounter(0);
+</script>
+</body>
+</html>
