@@ -153,6 +153,21 @@
     font-family: inherit;
   }
   select.purpose-sel:focus { outline: 2px solid #1f77b4; }
+
+  .template-panel {
+    background: #fff;
+    border: 1px solid #b8c8d8;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin: 8px 0 12px 0;
+    font-family: "Courier New", monospace;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .template-panel .lab { color: #1f4e79; font-weight: bold; }
+  .template-panel .seg { letter-spacing: 1px; }
+  .template-panel .mid { color: #888; }
+  .template-panel .note { color:#666; font-family: inherit; font-size: 12px; margin-top: 6px; }
   .feedback { margin-top: 8px; font-weight: bold; }
   .feedback.ok { color: #2d8659; }
   .feedback.bad { color: #b03030; }
@@ -310,7 +325,8 @@
 
     <div class="step" id="step-primer">
       <h3>第四步：选择正确的引物（共 2 个）</h3>
-      <p class="small">引物书写遵循 5'→3' 的方向。</p>
+      <p class="small">引物书写遵循 5'→3' 的方向。请观察下方模板链，结合"互补 + 反向"判断哪两条引物能扩增这段 DNA。</p>
+      <div class="template-panel" id="templatePanel"></div>
       <div id="primerOptions"></div>
       <button onclick="checkPrimers()">确认引物</button>
       <div class="feedback" id="primerFeedback"></div>
@@ -596,20 +612,75 @@ function checkPurpose(){
 }
 
 /* ========================================================
-   步骤四：引物
-   上链 5'-ATGCGT…ACGTAC-3'
-   下链 3'-TACGCA…TGCATG-5'
-   引物1（与下链左端 TACGCA 互补，新合成上链）：5'-ATGCGT-3'
-   引物2（与上链右端 ACGTAC 互补，新合成下链）：5'-GTACGT-3'
+   步骤四：引物（基于模板链动态判定）
+   模板（与右侧 PCR 动画一致）：
+     上链 5'-ATGCGT … ACGTAC-3'
+     下链 3'-TACGCA … TGCATG-5'
+   一条合格的引物必须：
+     ① 按 5'→3' 书写；
+     ② 与某条模板链的 3' 端 6 碱基反向互补（即引物 5'→3' 序列 = 模板 3'→5' 区段的互补）。
+   按此规则枚举判定，不再用预先标记的 correct 字段。
    ======================================================== */
+
+/* 解析引物字符串，返回核心 5'→3' 6 碱基；非法则返回 null */
+function parsePrimer(s){
+  const m = s.match(/^5'-([ATGC]{6})-3'$/);
+  return m ? m[1] : null;
+}
+/* 把序列转为其反向互补（输入 5'→3'，输出也是 5'→3'，但是基于互补链） */
+function revComp(seq){
+  return seq.split('').reverse().map(b=>COMPLEMENT[b]).join('');
+}
+/* 模板链 3' 端 6 碱基（按 5'→3' 写）：
+   - 上链 3' 端 6 碱基 = TOP_RIGHT_53.join('') = "ACGTAC"
+   - 下链 3' 端 6 碱基（按 5'→3' 写）= 下链 5'→3' 的最末 6 碱基
+       下链 5'→3' = COMPLEMENT(上链 3'→5') = 上链反向互补
+       但更直接：下链 3' 端在画面左侧，对应 BOT_LEFT_35（3'→5'），
+       其 5'→3' 顺序 = 反过来，即 ['A','T','G','C','G','T'].slice().reverse() 的互补……
+   简化：直接构造下链 5'→3' 完整序列然后取末 6。
+*/
+const TOP_53_FULL = TOP_LEFT_53.concat(TOP_RIGHT_53).join('');           // ATGCGTACGTAC
+const BOT_53_FULL = revComp(TOP_53_FULL);                                  // 下链 5'→3'
+// 模板 3' 端 6 碱基（按 5'→3' 书写）= 全序列的最后 6 个
+const TOP_3END_53 = TOP_53_FULL.slice(-6);  // "ACGTAC"
+const BOT_3END_53 = BOT_53_FULL.slice(-6);  // 下链 3' 端最后 6 碱基
+
+/* 一条引物是合法引物：其 5'→3' 序列等于某条模板 3' 端 6 碱基的反向互补。 */
+function isValidPrimer(seq){
+  if (!seq) return false;
+  const rc = revComp(seq);
+  return rc === TOP_3END_53 || rc === BOT_3END_53;
+}
+
 const primerOptions = [
-  { seq:"5'-ATGCGT-3'", correct:true },
-  { seq:"5'-GTACGT-3'", correct:true },
-  { seq:"5'-TGCGTA-3'", correct:false },
-  { seq:"5'-CATGCA-3'", correct:false }
+  { seq:"5'-ATGCGT-3'" },
+  { seq:"5'-GTACGT-3'" },
+  { seq:"5'-TGCGTA-3'" },
+  { seq:"5'-CATGCA-3'" }
 ];
+function isPrimerOptionCorrect(idx){
+  return isValidPrimer(parsePrimer(primerOptions[idx].seq));
+}
+
 let primerSelected = new Set();
+
+function renderTemplatePanel(){
+  const el = document.getElementById('templatePanel');
+  if (!el) return;
+  const top5 = TOP_LEFT_53.join('');
+  const top3 = TOP_RIGHT_53.join('');
+  const bot3 = BOT_LEFT_35.join('');
+  const bot5 = BOT_RIGHT_35.join('');
+  el.innerHTML = `
+    <div class="lab">模板 DNA</div>
+    <div class="seg">上链：5'-<b>${top5}</b><span class="mid"> …… </span><b>${top3}</b>-3'</div>
+    <div class="seg">下链：3'-<b>${bot3}</b><span class="mid"> …… </span><b>${bot5}</b>-5'</div>
+    <div class="note">提示：引物的 5'→3' 序列要等于某条模板链 3' 端 6 碱基的反向互补。</div>
+  `;
+}
+
 function renderPrimers(){
+  renderTemplatePanel();
   const wrap = document.getElementById('primerOptions');
   wrap.innerHTML = '';
   primerSelected.clear();
@@ -637,16 +708,26 @@ function checkPrimers(){
     fb.className = 'feedback bad';
     return;
   }
-  let allRight = true;
-  primerSelected.forEach(i=>{ if (!primerOptions[i].correct) allRight = false; });
-  if (allRight){
-    fb.textContent = '正确！可以开始 PCR 循环。';
+  // 必须两条都合法，且分别匹配两条模板（不能两条都匹配同一条链）
+  const picked = [...primerSelected];
+  const seqs = picked.map(i => parsePrimer(primerOptions[i].seq));
+  const allValid = seqs.every(isValidPrimer);
+  const matchTop = seqs.map(s => s && revComp(s) === TOP_3END_53);
+  const matchBot = seqs.map(s => s && revComp(s) === BOT_3END_53);
+  const coversBoth = (matchTop[0] && matchBot[1]) || (matchTop[1] && matchBot[0]);
+
+  if (allValid && coversBoth){
+    fb.textContent = '正确！两条引物分别与两条模板链 3\' 端互补，可以开始 PCR 循环。';
     fb.className = 'feedback ok';
     setTimeout(()=>{ setActive('step-cycles'); showParentDNA(); }, 500);
   } else {
     errorLog.primer.wrongCount++;
-    errorLog.primer.wrongChoices.push([...primerSelected].map(i=>primerOptions[i].seq));
-    fb.textContent = '引物选择不正确，请再试。';
+    errorLog.primer.wrongChoices.push(picked.map(i=>primerOptions[i].seq));
+    if (allValid && !coversBoth){
+      fb.textContent = '两条引物都合法，但都对应同一条模板链。需要两条引物分别针对上链与下链的 3\' 端。';
+    } else {
+      fb.textContent = '引物选择不正确：请回到模板链对照"反向 + 互补"重新判断。';
+    }
     fb.className = 'feedback bad';
   }
 }
