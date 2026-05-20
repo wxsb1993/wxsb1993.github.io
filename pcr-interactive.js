@@ -26,6 +26,8 @@
   const correctPrimers = ["5'-ATGCCG-3'", "5'-TAGCTA-3'"];
 
   const parentDna = document.getElementById("parentDna");
+  const progressText = document.getElementById("progressText");
+  const progressSteps = document.querySelectorAll(".progress-step");
   const orderList = document.getElementById("orderList");
   const processButtons = document.querySelectorAll(".process-btn");
   const resetOrder = document.getElementById("resetOrder");
@@ -90,6 +92,21 @@
     item.className = "log-item";
     item.innerHTML = content;
     logPanel.prepend(item);
+  }
+
+  function updateProgress(step) {
+    if (progressText) {
+      progressText.textContent = `${step}/4`;
+    }
+    progressSteps.forEach(node => {
+      const nodeStep = Number(node.dataset.step);
+      node.classList.remove("active", "done");
+      if (nodeStep < step) {
+        node.classList.add("done");
+      } else if (nodeStep === step) {
+        node.classList.add("active");
+      }
+    });
   }
 
   function renderParentDna() {
@@ -302,6 +319,7 @@
     }
     setFeedback(orderFeedback, "success", "排序正确，可以进入下一步。");
     conditionSection.classList.remove("hidden");
+    updateProgress(2);
     addLog("<strong>步骤排序完成</strong><br>顺序：变性 → 退火 → 聚合");
   });
 
@@ -337,6 +355,7 @@
 
     setFeedback(conditionFeedback, "success", "条件正确，可以进入引物选择。");
     primerSection.classList.remove("hidden");
+    updateProgress(3);
     addLog("<strong>步骤条件完成</strong><br>变性 95°C，退火 55-68°C，聚合 72°C");
   });
 
@@ -348,6 +367,7 @@
     }
     setFeedback(primerFeedback, "success", "引物选择正确，可以开始第一轮循环。");
     simulationSection.classList.remove("hidden");
+    updateProgress(4);
     addLog("<strong>引物选择完成</strong><br>两个引物均按 5' 到 3' 书写并定位到模板链");
   });
 
@@ -387,6 +407,7 @@
   });
 
   renderParentDna();
+  updateProgress(1);
   renderOrder();
   renderPrimerOptions();
   addLog("<strong>已就绪</strong><br>从步骤排序开始");
