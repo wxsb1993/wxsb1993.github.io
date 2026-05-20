@@ -20,6 +20,11 @@
   let currentCycle = 0;
   let running = false;
   let selectedQuiz = "";
+  let manualMode = false;
+  let manualStage = "";
+  let manualExtIndex = 0;
+  let manualGrowingNodes = [];
+  let manualCycle = 0;
 
   const correctOrder = ["变性", "退火", "聚合"];
   const primerOptions = ["5'-ATGCCG-3'", "5'-TAGCTA-3'", "5'-GGCATC-3'", "5'-CGTTAC-3'"];
@@ -52,6 +57,11 @@
   const simulationSection = document.getElementById("simulationSection");
   const runFirstCycleBtn = document.getElementById("runFirstCycleBtn");
   const nextCycleBtn = document.getElementById("nextCycleBtn");
+  const startManualFinalBtn = document.getElementById("startManualFinalBtn");
+  const manualControlPanel = document.getElementById("manualControlPanel");
+  const manualStepBtn = document.getElementById("manualStepBtn");
+  const manualBaseBtn = document.getElementById("manualBaseBtn");
+  const manualHint = document.getElementById("manualHint");
   const stagePanel = document.getElementById("stagePanel");
   const productPanel = document.getElementById("productPanel");
   const cycleIndicator = document.getElementById("cycleIndicator");
@@ -107,6 +117,18 @@
         node.classList.add("active");
       }
     });
+  }
+
+  function refreshManualStartButton() {
+    if (!startManualFinalBtn) {
+      return;
+    }
+    if (!simulationSection || simulationSection.classList.contains("hidden") || running || manualMode || currentCycle >= 3) {
+      startManualFinalBtn.classList.add("hidden");
+      return;
+    }
+    startManualFinalBtn.textContent = `开始手动第${currentCycle + 1}轮`;
+    startManualFinalBtn.classList.remove("hidden");
   }
 
   function renderParentDna() {
@@ -250,6 +272,94 @@
     addLog(`<strong>第 ${cycle} 轮 - 聚合</strong><br>核苷酸逐个加入完成新链延伸`);
   }
 
+  function renderManualExtensionStage(cycle) {
+    stagePanel.innerHTML = "<h4>聚合（手动）</h4>";
+    const board = document.createElement("div");
+    board.className = "stage-board";
+    const templates = Math.pow(2, cycle - 1) * 2;
+    manualGrowingNodes = [];
+
+    for (let i = 0; i < templates; i += 1) {
+      const isTopTemplate = i % 2 === 0;
+      const card = document.createElement("div");
+      card.className = "template-card";
+      card.innerHTML = `
+        <h4>模板链 ${i + 1}</h4>
+        <div class="strand">
+          <span>${isTopTemplate ? "5'" : "3'"}</span>
+          <span>${isTopTemplate ? topTemplate : bottomTemplate}</span>
+          <span>${isTopTemplate ? "3'" : "5'"}</span>
+        </div>
+        <div class="strand">
+          <span>${isTopTemplate ? "3'" : "5'"}</span>
+          <span class="growing-seq"></span>
+          <span>${isTopTemplate ? "5'" : "3'"}</span>
+        </div>
+      `;
+      manualGrowingNodes.push(card.querySelector(".growing-seq"));
+      board.appendChild(card);
+    }
+
+    stagePanel.appendChild(board);
+    addLog(`<strong>第 ${cycle} 轮 - 聚合</strong><br>进入手动逐个碱基对延伸`);
+  }
+
+  function appendOneManualBasePair() {
+    if (manualExtIndex >= topTemplate.length) {
+      return;
+    }
+    for (let i = 0; i < manualGrowingNodes.length; i += 1) {
+      const base = i % 2 === 0 ? bottomTemplate[manualExtIndex] : topTemplate[manualExtIndex];
+      const unit = document.createElement("span");
+      unit.className = "nucleotide";
+      unit.textContent = base;
+      manualGrowingNodes[i].appendChild(unit);
+    }
+    manualExtIndex += 1;
+    if (manualHint) {
+      manualHint.textContent = `第 ${manualCycle} 轮聚合进度：${manualExtIndex}/${topTemplate.length}`;
+    }
+    if (manualExtIndex >= topTemplate.length) {
+      manualBaseBtn.disabled = true;
+      manualMode = false;
+      running = false;
+      currentCycle = manualCycle;
+      if (manualHint) {
+        manualHint.textContent = `第 ${manualCycle} 轮完成。`;
+      }
+      renderProducts(manualCycle);
+      addLog(`<strong>第 ${manualCycle} 轮完成</strong><br>DNA 分子总数：${Math.pow(2, manualCycle)}`);
+      manualControlPanel.classList.add("hidden");
+      if (currentCycle < 3) {
+        runFirstCycleBtn.disabled = true;
+        nextCycleBtn.disabled = false;
+        refreshManualStartButton();
+      } else {
+        nextCycleBtn.disabled = true;
+        quizSection.classList.remove("hidden");
+      }
+    }
+  }
+
+  function startManualCycle(cycle) {
+    running = true;
+    manualMode = true;
+    manualStage = "denature";
+    manualExtIndex = 0;
+    manualGrowingNodes = [];
+    manualCycle = cycle;
+    cycleIndicator.textContent = `当前循环：${cycle}（手动）`;
+    renderDenatureStage(cycle);
+    manualControlPanel.classList.remove("hidden");
+    manualStepBtn.disabled = false;
+    manualBaseBtn.disabled = true;
+    refreshManualStartButton();
+    if (manualHint) {
+      manualHint.textContent = "点击“前进一步”进入退火。";
+    }
+    addLog(`<strong>第 ${cycle} 轮启动</strong><br>已切换为人工控制模式`);
+  }
+
   function renderProducts(cycle) {
     const count = Math.pow(2, cycle);
     productPanel.innerHTML = `<h4 style="margin:10px 0 6px;">第 ${cycle} 轮结束：${count} 个 DNA 分子</h4>`;
@@ -270,6 +380,11 @@
 
   async function runCycle(cycle) {
     running = true;
+    manualMode = false;
+    refreshManualStartButton();
+    if (manualControlPanel) {
+      manualControlPanel.classList.add("hidden");
+    }
     cycleIndicator.textContent = `当前循环：${cycle}`;
     renderDenatureStage(cycle);
     await wait(1200);
@@ -280,14 +395,14 @@
     addLog(`<strong>第 ${cycle} 轮完成</strong><br>DNA 分子总数：${Math.pow(2, cycle)}`);
     currentCycle = cycle;
     running = false;
-    if (currentCycle === 1) {
+    if (currentCycle >= 1 && currentCycle < 3) {
       runFirstCycleBtn.disabled = true;
       nextCycleBtn.disabled = false;
-    }
-    if (currentCycle >= 3) {
+    } else if (currentCycle >= 3) {
       nextCycleBtn.disabled = true;
       quizSection.classList.remove("hidden");
     }
+    refreshManualStartButton();
   }
 
   processButtons.forEach(btn => {
@@ -368,6 +483,7 @@
     setFeedback(primerFeedback, "success", "引物选择正确，可以开始第一轮循环。");
     simulationSection.classList.remove("hidden");
     updateProgress(4);
+    refreshManualStartButton();
     addLog("<strong>引物选择完成</strong><br>两个引物均按 5' 到 3' 书写并定位到模板链");
   });
 
@@ -376,6 +492,11 @@
       return;
     }
     clearFeedbacks();
+    manualMode = false;
+    refreshManualStartButton();
+    if (manualControlPanel) {
+      manualControlPanel.classList.add("hidden");
+    }
     await runCycle(1);
   });
 
@@ -384,7 +505,52 @@
       return;
     }
     clearFeedbacks();
+    manualMode = false;
+    refreshManualStartButton();
+    if (manualControlPanel) {
+      manualControlPanel.classList.add("hidden");
+    }
     await runCycle(currentCycle + 1);
+  });
+
+  if (startManualFinalBtn) {
+    startManualFinalBtn.addEventListener("click", () => {
+      if (running || currentCycle >= 3) {
+        return;
+      }
+      clearFeedbacks();
+      startManualCycle(currentCycle + 1);
+    });
+  }
+
+  manualStepBtn.addEventListener("click", () => {
+    if (!manualMode) {
+      return;
+    }
+    if (manualStage === "denature") {
+      renderAnnealStage(manualCycle);
+      manualStage = "anneal";
+      if (manualHint) {
+        manualHint.textContent = "点击“前进一步”进入聚合。";
+      }
+      return;
+    }
+    if (manualStage === "anneal") {
+      renderManualExtensionStage(manualCycle);
+      manualStage = "extension";
+      manualStepBtn.disabled = true;
+      manualBaseBtn.disabled = false;
+      if (manualHint) {
+        manualHint.textContent = `点击“下一碱基对”逐个添加碱基对（0/${topTemplate.length}）。`;
+      }
+    }
+  });
+
+  manualBaseBtn.addEventListener("click", () => {
+    if (!manualMode || manualStage !== "extension") {
+      return;
+    }
+    appendOneManualBasePair();
   });
 
   quizOptions.forEach(option => {
@@ -410,5 +576,9 @@
   updateProgress(1);
   renderOrder();
   renderPrimerOptions();
+  refreshManualStartButton();
+  if (manualControlPanel) {
+    manualControlPanel.classList.add("hidden");
+  }
   addLog("<strong>已就绪</strong><br>从步骤排序开始");
 })();

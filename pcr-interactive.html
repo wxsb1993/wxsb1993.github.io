@@ -375,6 +375,27 @@
       color: #375ed7;
     }
 
+    .manual-panel {
+      margin-top: 10px;
+      border: 1px solid #d7dff1;
+      border-radius: 10px;
+      padding: 10px;
+      background: #f8fbff;
+    }
+
+    .manual-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .manual-note {
+      font-size: 13px;
+      color: #4c5e8d;
+      min-height: 20px;
+    }
+
     .feedback {
       margin-top: 10px;
       min-height: 24px;
@@ -487,6 +508,14 @@
       <div style="margin-top: 10px;">
         <button class="main-btn" id="runFirstCycleBtn">执行第一轮</button>
         <button class="main-btn" id="nextCycleBtn" disabled>下一次循环</button>
+        <button class="main-btn hidden" id="startManualFinalBtn">开始手动第3轮</button>
+      </div>
+      <div class="manual-panel hidden" id="manualControlPanel">
+        <div class="manual-note" id="manualHint">最后一轮手动控制区域</div>
+        <div class="manual-actions">
+          <button class="main-btn" id="manualStepBtn">前进一步</button>
+          <button class="main-btn" id="manualBaseBtn" disabled>下一碱基对</button>
+        </div>
       </div>
       <div id="stagePanel"></div>
       <div id="productPanel"></div>
