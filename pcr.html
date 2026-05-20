@@ -75,6 +75,11 @@
     transition: background 0.15s, border-color 0.15s;
   }
   .order-list li:hover { background: #eef4fa; }
+  .order-list li.picked {
+    border-color: #c9a227;
+    background: #fff8d6;
+    box-shadow: 0 0 0 2px rgba(201,162,39,0.25);
+  }
   .order-list li.dragging { opacity: 0.4; cursor: grabbing; }
   .order-list li.drag-over { border-color: #1f77b4; background: #e8f0fa; }
   .order-list li::before {
@@ -277,7 +282,7 @@
 
     <div class="step active" id="step-order">
       <h3>第一步：排列三个过程的顺序</h3>
-      <p class="small">拖动方块调整顺序（自上而下为先后顺序），完成后点击"确认顺序"。</p>
+      <p class="small">两种方式皆可：① 直接<b>拖动</b>方块到目标位置；② <b>点击</b>选中一个方块（变黄），再点击另一个方块，两者交换位置。</p>
       <ul class="order-list" id="orderList"></ul>
       <button onclick="checkOrder()">确认顺序</button>
       <div class="feedback" id="orderFeedback"></div>
@@ -456,6 +461,12 @@ const orderItems = [
 ];
 const correctOrder = ['B','A','C'];
 let dragSrcIdx = null;
+let pickedIdx = null;   // 点击选中模式下被选中的索引
+
+function clearOrderFeedback(){
+  const fb = document.getElementById('orderFeedback');
+  fb.textContent = ''; fb.className = 'feedback';
+}
 
 function renderOrder(){
   const ul = document.getElementById('orderList');
@@ -465,8 +476,27 @@ function renderOrder(){
     li.draggable = true;
     li.dataset.idx = idx;
     li.textContent = it.text;
+    if (pickedIdx === idx) li.classList.add('picked');
+
+    // 点击选择 / 交换
+    li.addEventListener('click', ()=>{
+      if (pickedIdx === null){
+        pickedIdx = idx;
+      } else if (pickedIdx === idx){
+        pickedIdx = null;  // 再次点击同一项 → 取消选择
+      } else {
+        // 交换两项
+        [orderItems[pickedIdx], orderItems[idx]] = [orderItems[idx], orderItems[pickedIdx]];
+        pickedIdx = null;
+        clearOrderFeedback();
+      }
+      renderOrder();
+    });
+
+    // 拖动相关
     li.addEventListener('dragstart', e=>{
       dragSrcIdx = idx;
+      pickedIdx = null;
       li.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
     });
@@ -487,8 +517,7 @@ function renderOrder(){
       orderItems.splice(target, 0, moved);
       dragSrcIdx = null;
       renderOrder();
-      const fb = document.getElementById('orderFeedback');
-      fb.textContent = ''; fb.className = 'feedback';
+      clearOrderFeedback();
     });
     ul.appendChild(li);
   });
