@@ -253,6 +253,23 @@
   .summary-row .lbl { font-weight: bold; color: #1f4e79; }
   .summary-row.bad .lbl { color: #b03030; }
   .summary-row.ok .lbl { color: #2d8659; }
+
+  .restart-fab {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 90;
+    background: #b03030;
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  }
+  .restart-fab:hover { background: #8a2424; }
   #stage { width: 100%; display: block; }
   .stage-title {
     color: #1f4e79;
@@ -375,10 +392,11 @@
     <div id="summaryBody"></div>
     <div style="margin-top:12px; text-align:right;">
       <button onclick="closeSummary()">关闭</button>
-      <button onclick="restartAll()">重新开始</button>
     </div>
   </div>
 </div>
+
+<button class="restart-fab" onclick="restartAll()">↻ 重新开始</button>
 
 <script>
 /* ========================================================
@@ -452,6 +470,17 @@ const errorLog = {
 };
 
 /* ========================================================
+   工具：原地洗牌（Fisher-Yates）
+   ======================================================== */
+function shuffleInPlace(arr){
+  for (let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* ========================================================
    步骤一：拖动排序
    ======================================================== */
 const orderItems = [
@@ -466,6 +495,12 @@ let pickedIdx = null;   // 点击选中模式下被选中的索引
 function clearOrderFeedback(){
   const fb = document.getElementById('orderFeedback');
   fb.textContent = ''; fb.className = 'feedback';
+}
+
+function shuffleOrderItems(){
+  // 洗牌；如果碰巧洗成正确顺序，再洗一次
+  do { shuffleInPlace(orderItems); }
+  while (orderItems.map(x=>x.id).join(',') === correctOrder.join(','));
 }
 
 function renderOrder(){
@@ -594,6 +629,8 @@ function renderPurpose(){
   const wrap = document.getElementById('purposeBlock');
   wrap.innerHTML = '';
   purposeChoice = [null,null,null];
+  // 每次进入此步骤，随机打乱每个子题的选项顺序
+  purposes.forEach(p => shuffleInPlace(p.options));
   purposes.forEach((p, pi)=>{
     const div = document.createElement('div');
     div.innerHTML = `<div><b>${p.step}的目的：</b></div>`;
@@ -713,6 +750,7 @@ function renderPrimers(){
   const wrap = document.getElementById('primerOptions');
   wrap.innerHTML = '';
   primerSelected.clear();
+  shuffleInPlace(primerOptions);
   primerOptions.forEach((p, i)=>{
     const b = document.createElement('button');
     b.className = 'option';
@@ -779,6 +817,7 @@ function renderQuiz(){
   const wrap = document.getElementById('quizOptions');
   wrap.innerHTML = '';
   document.getElementById('summaryBtn').disabled = true;
+  shuffleInPlace(quizOpts);
   quizOpts.forEach((o, i)=>{
     const b = document.createElement('button');
     b.className = 'option';
@@ -973,7 +1012,7 @@ function showSummary(){
       recos.push('做引物题时，先把模板按 5\'→3\' 写清楚，再写出与之互补反向的链，最后取末端 6 个碱基即可。');
     if (wrongKeys.includes('quiz'))
       recos.push('涉及指数增长的题目可以先代入 n=1、2、3 验证：1 个分子 → 2 → 4 → 8，正好对应 2¹、2²、2³，公式即 2ⁿ。');
-    recos.push('建议关闭本窗口后点击"重新开始"，再过一遍流程，把刚才薄弱的环节再确认一次。');
+    recos.push('建议关闭本窗口后点击右下角"重新开始"，再过一遍流程，把刚才薄弱的环节再确认一次。');
     reco.innerHTML = `<div class="lbl">老师的提升建议</div><ul style="margin:6px 0 0 18px;padding:0;">${recos.map(r=>'<li>'+r+'</li>').join('')}</ul>`;
     body.appendChild(reco);
   }
@@ -998,6 +1037,7 @@ function restartAll(){
     { id:'B', text:'变性（双链解开）' },
     { id:'C', text:'延伸（聚合形成新链）' }
   );
+  shuffleOrderItems();
   renderOrder();
   document.getElementById('orderFeedback').textContent = '';
   // 温度：复位
@@ -1255,12 +1295,12 @@ async function animateAnneal(h){
   }
   h.primer2Bases = p2Bases;
 
-  // 逐个出现
+  // 引物：作为一个整体一次性出现（6 个碱基同时显现）
   for (let i=0;i<SIDE_BASES;i++){
     p1Bases[i].setAttribute('opacity','1');
     p2Bases[i].setAttribute('opacity','1');
-    await pausableDelay(160);
   }
+  await pausableDelay(500);
 }
 
 /* 延伸：从引物 3' 端开始向另一端合成
@@ -1505,6 +1545,7 @@ async function runFullCycle(){
    初始化
    ======================================================== */
 renderStepper();
+shuffleOrderItems();
 renderOrder();
 setStageSize(360);
 setTitle('请先在左侧完成步骤', '');
