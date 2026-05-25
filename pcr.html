@@ -363,6 +363,7 @@
         <button id="stepBtn" onclick="nextStep()">下一步</button>
         <button id="autoBtn" onclick="runFullCycle()">自动播放本轮</button>
         <button id="pauseBtn" onclick="togglePause()" disabled>暂停</button>
+        <button onclick="restartBasicCycle()" style="background:#a06a1f;">重新开始循环</button>
       </div>
       <div class="feedback" id="cycleFeedback"></div>
     </div>
@@ -372,8 +373,38 @@
       <p>经过 <b>n</b> 次 PCR 循环后，理论上由 1 个亲本 DNA 分子可得到的 DNA 分子总数是：</p>
       <div id="quizOptions"></div>
       <button onclick="checkQuiz()">确认答案</button>
-      <button id="summaryBtn" onclick="showSummary()" disabled>查看总结</button>
       <div class="feedback" id="quizFeedback"></div>
+    </div>
+
+    <div class="step" id="step-mut-primer">
+      <h3>第七步：选择定点突变 PCR 的引物（共 2 个）</h3>
+      <p class="small">定点突变 PCR 中其中一条引物的中间 2 个碱基被人为更改（红色标注），用于在扩增产物中引入突变。请观察下方模板，选出 2 条能够正确启动扩增、并将突变带入新链的引物。</p>
+      <div class="template-panel" id="mutTemplatePanel"></div>
+      <div id="mutPrimerOptions"></div>
+      <button onclick="checkMutPrimers()">确认引物</button>
+      <div class="feedback" id="mutPrimerFeedback"></div>
+    </div>
+
+    <div class="step" id="step-mut-cycles">
+      <h3>第八步：进行定点突变 PCR 循环</h3>
+      <p class="small">观察突变位点（红色碱基）如何在循环中被复制传播。共 3 次循环。</p>
+      <div>当前已完成循环数：<b id="mutCycleNum">0</b> / 3</div>
+      <div>当前阶段：<b id="mutPhaseText">尚未开始</b></div>
+      <div style="margin-top:8px;">
+        <button id="mutStepBtn" onclick="mutNextStep()">下一步</button>
+        <button id="mutAutoBtn" onclick="mutRunFullCycle()">自动播放本轮</button>
+        <button id="mutPauseBtn" onclick="mutTogglePause()" disabled>暂停</button>
+        <button onclick="restartMutCycle()" style="background:#a06a1f;">重新开始循环</button>
+      </div>
+      <div class="feedback" id="mutCycleFeedback"></div>
+    </div>
+
+    <div class="step" id="step-mut-quiz">
+      <h3>第九步：思考题（突变 DNA）</h3>
+      <p>从亲本无突变 DNA 开始，<b>第几次</b>定点突变 PCR 循环后，体系中首次出现<b>双链都带突变</b>（完全变异）的 DNA 分子？</p>
+      <div id="mutQuizOptions"></div>
+      <button onclick="checkMutQuiz()">确认答案</button>
+      <div class="feedback" id="mutQuizFeedback"></div>
     </div>
   </div>
 
@@ -388,10 +419,22 @@
 <!-- 总结弹层 -->
 <div class="summary-modal" id="summaryModal">
   <div class="summary-card">
-    <h3>本次 PCR 互动总结</h3>
+    <h3 id="summaryTitle">本次 PCR 互动总结</h3>
     <div id="summaryBody"></div>
     <div style="margin-top:12px; text-align:right;">
       <button onclick="closeSummary()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 进入定点突变 PCR 的过渡弹层 -->
+<div class="summary-modal" id="mutIntroModal">
+  <div class="summary-card">
+    <h3>是否进入"定点突变 PCR"？</h3>
+    <div>普通 PCR 部分已经完成。接下来你将进入<b>定点突变 PCR</b>：在原有的引物中，引入一条<b>中间 2 个碱基被人为更改</b>的"突变引物"，让突变随着扩增传播到产物中。</div>
+    <div style="margin-top:8px;color:#666;font-size:13px;">点击"开始"进入第七步：选择突变 PCR 的引物。</div>
+    <div style="margin-top:12px; text-align:right;">
+      <button onclick="enterMutationPCR()">开始</button>
     </div>
   </div>
 </div>
@@ -415,6 +458,23 @@ const SIDE_BASES = 6;
 const MIDDLE_LEN = 180;
 const DNA_W = SIDE_BASES*BASE_W*2 + MIDDLE_LEN; // 396
 
+/* 突变阶段：端部 8 碱基；为了让两个分子能在一行排开，把中间直线段缩短 */
+const MUT_SIDE_BASES = 8;
+const MUT_MIDDLE_LEN = 60;
+const MUT_DNA_W = MUT_SIDE_BASES*BASE_W*2 + MUT_MIDDLE_LEN; // 348
+
+/* 突变阶段的 8 碱基模板序列（仅在突变阶段使用） */
+const MUT_TOP_LEFT_53  = ['A','T','G','C','G','T','A','C'];   // 上链 5'→3' 左端 8
+const MUT_TOP_RIGHT_53 = ['T','C','A','T','A','C','G','T'];   // 上链 5'→3' 右端 8
+const MUT_BOT_LEFT_35  = MUT_TOP_LEFT_53.map(b=>COMPLEMENT[b]);
+const MUT_BOT_RIGHT_35 = MUT_TOP_RIGHT_53.map(b=>COMPLEMENT[b]);
+/* 内联 revComp（revComp 函数在后面才定义） */
+function _rc(arr){ return arr.slice().reverse().map(b=>COMPLEMENT[b]).join(''); }
+const MUT_TOP_3END = MUT_TOP_RIGHT_53.join('');                  // 上链 3' 端 8
+const MUT_BOT_3END = _rc(MUT_TOP_LEFT_53);                       // 下链 3' 端 8（按 5'→3'）
+const MUT_TARGET_TOP = _rc(MUT_TOP_RIGHT_53.slice());            // 与上链 3' 端互补的引物
+const MUT_TARGET_BOT = MUT_TOP_LEFT_53.join('');                  // 与下链 3' 端互补的引物 = 上链 5' 端
+
 // 在每个 DNA 容器内的 y 坐标
 const Y_TOP_PAIRED = 78;
 const Y_BOT_PAIRED = 114;       // 配对时上下间距 36
@@ -430,26 +490,64 @@ const STATIC_BOX_H = 120;
 /* ========================================================
    左侧步骤切换 + 步骤条
    ======================================================== */
-const STEP_IDS = ['step-order','step-conditions','step-purpose','step-primer','step-cycles','step-quiz'];
-const STEP_LABELS = ['顺序','温度','目的','引物','循环','思考'];
+const STEP_IDS = ['step-order','step-conditions','step-purpose','step-primer','step-cycles','step-quiz','step-mut-primer','step-mut-cycles','step-mut-quiz'];
+const STEP_LABELS = ['顺序','温度','目的','引物','循环','思考','突变引物','突变循环','突变思考'];
 let currentStepIdx = 0;
+
+function jumpToStep(idx){
+  // 仅允许跳到已完成或当前的步骤
+  if (idx > currentStepIdx) return;
+  // 如果当前在思考题（第六或第九）想跳回循环：清掉思考题状态
+  const targetId = STEP_IDS[idx];
+  setActive(targetId);
+  // 跳到第五步 → 重置普通循环展示
+  if (targetId === 'step-cycles'){
+    if (busy) setPaused(false);
+    busy = false;
+    document.getElementById('cycleFeedback').textContent = '';
+    document.getElementById('cycleFeedback').className = 'feedback';
+    showParentDNA();
+  }
+  // 跳到第八步 → 重置突变循环展示
+  if (targetId === 'step-mut-cycles'){
+    if (mutBusy) mutSetPaused(false);
+    mutBusy = false;
+    document.getElementById('mutCycleFeedback').textContent = '';
+    document.getElementById('mutCycleFeedback').className = 'feedback';
+    showMutParentDNA();
+  }
+}
 
 function renderStepper(){
   const wrap = document.getElementById('stepper');
   wrap.innerHTML = '';
-  STEP_IDS.forEach((id, i)=>{
+  const MUT_START = 6;
+  const showMut = currentStepIdx >= MUT_START;
+  const lastIdx = showMut ? STEP_IDS.length - 1 : MUT_START - 1;
+  for (let i = 0; i <= lastIdx; i++){
+    if (i === MUT_START){
+      const br = document.createElement('div');
+      br.style.flexBasis = '100%';
+      br.style.height = '8px';
+      wrap.appendChild(br);
+    }
     const stp = document.createElement('div');
     stp.className = 'stp';
     if (i < currentStepIdx) stp.classList.add('done');
     if (i === currentStepIdx) stp.classList.add('active');
     stp.innerHTML = `<span class="dot">${i<currentStepIdx?'✓':(i+1)}</span><span>${STEP_LABELS[i]}</span>`;
+    if (i <= currentStepIdx){
+      stp.style.cursor = 'pointer';
+      stp.title = '点击跳回此步骤';
+      stp.addEventListener('click', ()=>jumpToStep(i));
+    }
     wrap.appendChild(stp);
-    if (i < STEP_IDS.length-1){
+    if (i < lastIdx && i !== MUT_START - 1){
       const bar = document.createElement('div');
       bar.className = 'bar' + (i < currentStepIdx ? ' done' : '');
       wrap.appendChild(bar);
     }
-  });
+  }
 }
 function setActive(id){
   STEP_IDS.forEach(s=>document.getElementById(s).classList.remove('active'));
@@ -466,7 +564,9 @@ const errorLog = {
   temps:   { wrongCount: 0, wrongChoices: [] },
   purpose: { wrongCount: 0, wrongChoices: [] }, // wrongChoices: [{step, picked}]
   primer:  { wrongCount: 0, wrongChoices: [] },
-  quiz:    { wrongCount: 0, wrongChoices: [] }
+  quiz:    { wrongCount: 0, wrongChoices: [] },
+  mutPrimer: { wrongCount: 0, wrongChoices: [] },
+  mutQuiz:   { wrongCount: 0, wrongChoices: [] }
 };
 
 /* ========================================================
@@ -816,7 +916,6 @@ function renderQuiz(){
   quizAnswered = false;
   const wrap = document.getElementById('quizOptions');
   wrap.innerHTML = '';
-  document.getElementById('summaryBtn').disabled = true;
   shuffleInPlace(quizOpts);
   quizOpts.forEach((o, i)=>{
     const b = document.createElement('button');
@@ -848,9 +947,9 @@ function checkQuiz(){
     quizAnswered = true;
     btns.forEach(b=>b.classList.remove('selected'));
     btns[quizSelected].classList.add('correct');
-    fb.textContent = '回答正确！';
+    fb.textContent = '回答正确！正在生成总结……';
     fb.className = 'feedback ok';
-    document.getElementById('summaryBtn').disabled = false;
+    setTimeout(()=>showSummary('basic'), 700);
   } else {
     errorLog.quiz.wrongCount++;
     errorLog.quiz.wrongChoices.push(o.text);
@@ -961,30 +1060,67 @@ function adviceQuiz(wrongList){
   return [...tips].join(' ');
 }
 
-function showSummary(){
+// 第七步：突变引物
+function adviceMutPrimer(wrongList){
+  if (wrongList.length === 0) return null;
+  const tips = new Set();
+  tips.add('定点突变 PCR 中，"突变引物"和正常引物一样要满足"5\'→3\' 书写、与某条模板 3\' 端反向互补"，区别只在中间 2 个碱基被人为改写——它仍然能与模板配对启动扩增，但合成出来的新链就带上了这个突变。');
+  tips.add('选错往往是把"两端的方向 / 互补"看错。建议先把模板按 5\'→3\' 写下来，再写出反向互补，最后取末 6（或 8）即可——突变碱基只在中间 2 位发生替换，两端 3 个碱基仍要严格互补。');
+  return [...tips].join(' ');
+}
+
+// 第九步：突变 DNA 数量
+function adviceMutQuiz(wrongList){
+  if (wrongList.length === 0) return null;
+  const tips = new Set();
+  tips.add('"完全变异"指 DNA 双链都带有变异碱基（一条链中段是 GG、另一条互补链中段是 CC，形成完整的 GG–CC 突变碱基对）。');
+  tips.add('第 1 轮：突变引物只替换了一条新合成的子链（带红 GG），与之配对的另一条链仍是亲本模板的原始序列 → 只是"半变异"，还不是完全变异。');
+  tips.add('第 2 轮：上一轮那条"半变异"分子在变性后，其带 GG 的子链作为模板被复制，新合成的互补链就配出红 CC → 这才得到一条变异链 + 一条与之互补的变异链，即首次出现完全变异 DNA。');
+  tips.add('一句话：第 2 次循环结束后才会首次出现双链都带突变的完全变异 DNA。');
+  return [...tips].join(' ');
+}
+
+function showSummary(phase){
   const body = document.getElementById('summaryBody');
+  const titleEl = document.getElementById('summaryTitle');
   body.innerHTML = '';
 
-  const totalErrors = Object.keys(errorLog).reduce((s,k)=>s + errorLog[k].wrongCount, 0);
+  let sections;
+  if (phase === 'mutation'){
+    titleEl.textContent = '定点突变 PCR 总结';
+    sections = [
+      { key:'mutPrimer', label:'第七步 突变引物选择', advice: adviceMutPrimer(errorLog.mutPrimer.wrongChoices) },
+      { key:'mutQuiz',   label:'第九步 完全变异 DNA 出现时机', advice: adviceMutQuiz(errorLog.mutQuiz.wrongChoices) }
+    ];
+  } else {
+    titleEl.textContent = '本次 PCR 互动总结';
+    sections = [
+      { key:'order',   label:'第一步 顺序排列',   advice: adviceOrder(errorLog.order.wrongChoices) },
+      { key:'temps',   label:'第二步 温度选择',   advice: adviceTemps(errorLog.temps.wrongChoices) },
+      { key:'purpose', label:'第三步 目的判断',   advice: advicePurpose(errorLog.purpose.wrongChoices) },
+      { key:'primer',  label:'第四步 引物选择',   advice: advicePrimer(errorLog.primer.wrongChoices) },
+      { key:'quiz',    label:'第六步 思考题',     advice: adviceQuiz(errorLog.quiz.wrongChoices) }
+    ];
+  }
+
+  const totalErrors = sections.reduce((s,sec)=>s + errorLog[sec.key].wrongCount, 0);
 
   // 总评（开场白）
   const overall = document.createElement('div');
   overall.className = 'summary-row ' + (totalErrors===0 ? 'ok' : '');
   let openWord;
-  if (totalErrors === 0) openWord = '同学全程一次过关，对 PCR 的每个环节理解都很到位，继续保持！';
-  else if (totalErrors <= 2) openWord = '同学整体掌握得不错，只在个别细节上需要再打磨一下，下面我针对你出错的地方逐条点评。';
-  else if (totalErrors <= 5) openWord = '同学对 PCR 的整体框架已经建立起来，但在一些关键概念上还存在混淆，下面我针对你出错的环节逐条点评，认真看完再做一次会有明显提升。';
-  else openWord = '看得出来 PCR 的几个核心概念还需要重新梳理，下面我把你出错的地方逐条点出来，请对照重新理解，再做一次。';
+  if (phase === 'mutation'){
+    if (totalErrors === 0) openWord = '定点突变 PCR 这一段同学一次过关，对引物设计和突变传播规律都把握得很好。';
+    else if (totalErrors <= 2) openWord = '定点突变 PCR 整体掌握得不错，下面就你出错的地方逐条点评。';
+    else openWord = '定点突变 PCR 中还有几个关键点需要再理一理，下面我针对错处逐条点评，请认真看完再做一次。';
+  } else {
+    if (totalErrors === 0) openWord = '同学全程一次过关，对 PCR 的每个环节理解都很到位，继续保持！';
+    else if (totalErrors <= 2) openWord = '同学整体掌握得不错，只在个别细节上需要再打磨一下，下面我针对你出错的地方逐条点评。';
+    else if (totalErrors <= 5) openWord = '同学对 PCR 的整体框架已经建立起来，但在一些关键概念上还存在混淆，下面我针对你出错的环节逐条点评，认真看完再做一次会有明显提升。';
+    else openWord = '看得出来 PCR 的几个核心概念还需要重新梳理，下面我把你出错的地方逐条点出来，请对照重新理解，再做一次。';
+  }
   overall.innerHTML = `<div class="lbl">老师的总体评价</div><div>共出现 ${totalErrors} 次错误。${openWord}</div>`;
   body.appendChild(overall);
-
-  const sections = [
-    { key:'order',   label:'第一步 顺序排列',   advice: adviceOrder(errorLog.order.wrongChoices) },
-    { key:'temps',   label:'第二步 温度选择',   advice: adviceTemps(errorLog.temps.wrongChoices) },
-    { key:'purpose', label:'第三步 目的判断',   advice: advicePurpose(errorLog.purpose.wrongChoices) },
-    { key:'primer',  label:'第四步 引物选择',   advice: advicePrimer(errorLog.primer.wrongChoices) },
-    { key:'quiz',    label:'第六步 思考题',     advice: adviceQuiz(errorLog.quiz.wrongChoices) }
-  ];
 
   sections.forEach(s=>{
     const div = document.createElement('div');
@@ -998,32 +1134,54 @@ function showSummary(){
     body.appendChild(div);
   });
 
-  // 整体提升建议
-  const wrongKeys = sections.filter(s=>errorLog[s.key].wrongCount>0).map(s=>s.key);
-  if (wrongKeys.length > 0){
+  // 整体提升建议（仅普通 PCR 段）
+  if (phase !== 'mutation'){
+    const wrongKeys = sections.filter(s=>errorLog[s.key].wrongCount>0).map(s=>s.key);
+    if (wrongKeys.length > 0){
+      const reco = document.createElement('div');
+      reco.className = 'summary-row';
+      const recos = [];
+      if (wrongKeys.includes('order') || wrongKeys.includes('temps') || wrongKeys.includes('purpose'))
+        recos.push('把"温度—事件—目的"三者一一对应起来记：95℃ 断氢键（变性）→ 55–68℃ 引物配对（退火）→ 72℃ Taq 酶合成（延伸）。');
+      if (wrongKeys.includes('purpose') || wrongKeys.includes('primer'))
+        recos.push('牢记 DNA 复制的两个铁律：碱基互补配对（A-T、G-C）；新链只能沿 5\'→3\' 方向延长。');
+      if (wrongKeys.includes('primer'))
+        recos.push('做引物题时，先把模板按 5\'→3\' 写清楚，再写出与之互补反向的链，最后取末端 6 个碱基即可。');
+      if (wrongKeys.includes('quiz'))
+        recos.push('涉及指数增长的题目可以先代入 n=1、2、3 验证：1 个分子 → 2 → 4 → 8，正好对应 2¹、2²、2³，公式即 2ⁿ。');
+      recos.push('关闭本窗口后，将进入"定点突变 PCR"环节，请继续完成第七到第九步。');
+      reco.innerHTML = `<div class="lbl">老师的提升建议</div><ul style="margin:6px 0 0 18px;padding:0;">${recos.map(r=>'<li>'+r+'</li>').join('')}</ul>`;
+      body.appendChild(reco);
+    }
+  } else {
+    // 突变段提示重新开始
     const reco = document.createElement('div');
     reco.className = 'summary-row';
-    const recos = [];
-    if (wrongKeys.includes('order') || wrongKeys.includes('temps') || wrongKeys.includes('purpose'))
-      recos.push('把"温度—事件—目的"三者一一对应起来记：95℃ 断氢键（变性）→ 55–68℃ 引物配对（退火）→ 72℃ Taq 酶合成（延伸）。');
-    if (wrongKeys.includes('purpose') || wrongKeys.includes('primer'))
-      recos.push('牢记 DNA 复制的两个铁律：碱基互补配对（A-T、G-C）；新链只能沿 5\'→3\' 方向延长。');
-    if (wrongKeys.includes('primer'))
-      recos.push('做引物题时，先把模板按 5\'→3\' 写清楚，再写出与之互补反向的链，最后取末端 6 个碱基即可。');
-    if (wrongKeys.includes('quiz'))
-      recos.push('涉及指数增长的题目可以先代入 n=1、2、3 验证：1 个分子 → 2 → 4 → 8，正好对应 2¹、2²、2³，公式即 2ⁿ。');
-    recos.push('建议关闭本窗口后点击右下角"重新开始"，再过一遍流程，把刚才薄弱的环节再确认一次。');
-    reco.innerHTML = `<div class="lbl">老师的提升建议</div><ul style="margin:6px 0 0 18px;padding:0;">${recos.map(r=>'<li>'+r+'</li>').join('')}</ul>`;
+    reco.innerHTML = `<div class="lbl">下一步</div><div>本次互动到此结束。可点击右下角"重新开始"再练习一次。</div>`;
     body.appendChild(reco);
   }
 
   document.getElementById('summaryModal').classList.add('show');
+  document.getElementById('summaryModal').dataset.phase = phase || 'basic';
 }
 function closeSummary(){
-  document.getElementById('summaryModal').classList.remove('show');
+  const modal = document.getElementById('summaryModal');
+  const phase = modal.dataset.phase;
+  modal.classList.remove('show');
+  // 普通 PCR 总结关闭后 → 弹出进入突变 PCR 的提示
+  if (phase === 'basic'){
+    document.getElementById('mutIntroModal').classList.add('show');
+  }
+  // 突变 PCR 总结关闭后 → 不做任何事，等待用户点击"重新开始"
+}
+function enterMutationPCR(){
+  document.getElementById('mutIntroModal').classList.remove('show');
+  setActive('step-mut-primer');
+  renderMutPrimers();
 }
 function restartAll(){
   closeSummary();
+  document.getElementById('mutIntroModal').classList.remove('show');
   // 重置错误日志
   Object.keys(errorLog).forEach(k=>{
     errorLog[k].wrongCount = 0;
@@ -1062,7 +1220,19 @@ function restartAll(){
   // 思考题：清空
   document.getElementById('quizOptions').innerHTML = '';
   document.getElementById('quizFeedback').textContent = '';
-  document.getElementById('summaryBtn').disabled = true;
+  // 突变引物
+  document.getElementById('mutPrimerOptions').innerHTML = '';
+  document.getElementById('mutTemplatePanel').innerHTML = '';
+  document.getElementById('mutPrimerFeedback').textContent = '';
+  mutPrimerSelected.clear();
+  // 突变循环
+  mutCycle = 0; mutCount = 1; mutPhase = 'idle';
+  document.getElementById('mutCycleNum').textContent = '0';
+  document.getElementById('mutPhaseText').textContent = '尚未开始';
+  document.getElementById('mutCycleFeedback').textContent = '';
+  // 突变思考题
+  document.getElementById('mutQuizOptions').innerHTML = '';
+  document.getElementById('mutQuizFeedback').textContent = '';
   // 舞台
   clearStage();
   setStageSize(360);
@@ -1129,20 +1299,23 @@ function drawText(parent, x, y, txt, fill){
    lineColor: 中间线颜色
    返回 { row: g, leftBases, rightBases, midLine }
    ======================================================== */
-function drawStrand(parent, y, leftSeq, rightSeq, labelLeft, labelRight, color, lineColor){
+function drawStrand(parent, y, leftSeq, rightSeq, labelLeft, labelRight, color, lineColor, opts){
+  const sideBases = (opts && opts.sideBases) || SIDE_BASES;
+  const middleLen = (opts && opts.middleLen) || MIDDLE_LEN;
+  const dnaW = sideBases*BASE_W*2 + middleLen;
   const g = el('g',{});
   parent.appendChild(g);
   drawText(g, -16, y+15, labelLeft);
-  drawText(g, DNA_W+4, y+15, labelRight);
+  drawText(g, dnaW+4, y+15, labelRight);
   const leftBases = [];
-  for (let i=0;i<SIDE_BASES;i++){
+  for (let i=0;i<sideBases;i++){
     leftBases.push(drawBase(g, i*BASE_W, y, leftSeq[i], color));
   }
-  const midStart = SIDE_BASES*BASE_W;
-  const midEnd = midStart + MIDDLE_LEN;
+  const midStart = sideBases*BASE_W;
+  const midEnd = midStart + middleLen;
   const midLine = drawLine(g, midStart, y+BASE_H/2, midEnd, y+BASE_H/2, lineColor);
   const rightBases = [];
-  for (let i=0;i<SIDE_BASES;i++){
+  for (let i=0;i<sideBases;i++){
     rightBases.push(drawBase(g, midEnd + i*BASE_W, y, rightSeq[i], color));
   }
   return { g, leftBases, rightBases, midLine };
@@ -1357,10 +1530,11 @@ async function animateExtend(h){
 /* ========================================================
    布局：n 个 DNA 在动画 / 静态时的位置
    ======================================================== */
-function layoutPositions(n, boxH){
+function layoutPositions(n, boxH, dnaW){
+  const w = dnaW || DNA_W;
   // 每行最多 2 个
   const perRow = Math.min(n, 2);
-  const colW = DNA_W + 60;
+  const colW = w + 60;
   const totalRowW = perRow*colW;
   const startX = Math.max(40, (STAGE_VIEW_W - totalRowW)/2 + 20);
   const rows = Math.ceil(n / perRow);
@@ -1436,6 +1610,16 @@ function togglePause(){
   if (!busy) return;
   setPaused(!paused);
   updateButtons();
+}
+
+function restartBasicCycle(){
+  if (busy){
+    setPaused(false); // 让正在跑的动画走完时不卡 promise
+  }
+  busy = false;
+  document.getElementById('cycleFeedback').textContent = '';
+  document.getElementById('cycleFeedback').className = 'feedback';
+  showParentDNA();
 }
 
 /* 准备一轮的 handles：渲染当前 count 个配对 DNA */
@@ -1540,6 +1724,620 @@ async function runFullCycle(){
     updateButtons();
   }
 }
+
+/* ========================================================
+   第七步：突变引物选择（端 8 碱基模板）
+   ========================================================
+   8 碱基引物的判定：
+     - 取外侧 6 碱基（idx 0,1,2 + 5,6,7），反向互补需等于<b>对应模板 3' 端 8 碱基中
+       与之配对的 6 个碱基</b>。
+       简化做法：直接判定其与"目标引物"在外侧 6 位上一致即可。
+   目标引物（与 8 碱基模板互补）：
+     - 与上链 3' 端 (TCATACGT) 互补 → ACGTATGA
+     - 与下链 3' 端 (GTACGCAT) 互补 → ATGCGTAC
+   ======================================================== */
+const MUT_INSERT = ['G','G']; // 突变中间 2 碱基（动画中显示为红色）
+
+function _splice2(target8, mid){
+  // 把 target8 中间 2 位（idx 3,4）替换为 mid（仅用于构造选项展示）
+  return target8.slice(0,3) + mid + target8.slice(5);
+}
+const mutPrimerOptions = [
+  { seq: MUT_TARGET_BOT },                    // ATGCGTAC —— 与下链 3' 端互补，<b>普通</b>引物（正确）
+  { seq: _splice2(MUT_TARGET_TOP, 'GG') },    // ACGGGTGA —— 与上链 3' 端互补，中间 2 碱基为突变（正确）
+  { seq: _splice2(MUT_TARGET_BOT, 'AA').split('').reverse().join('') }, // 错：方向反转
+  { seq: _splice2(MUT_TARGET_TOP, 'CC').replace(/[ATGC]/g, c=>COMPLEMENT[c]) } // 错：互补但同向
+];
+let mutPrimerSelected = new Set();
+
+function mutOuter6(seq){ return seq.slice(0,3) + seq.slice(5,8); }
+function mutMiddle2(seq){ return seq.slice(3,5); }
+function isMutationPrimer(opt){
+  // 是合法引物，并且中间 2 碱基与"目标引物"中间 2 位不同（即引入了突变）
+  const cov = mutPrimerCovers(opt);
+  if (!cov) return false;
+  const tgt = cov === 'top' ? MUT_TARGET_TOP : MUT_TARGET_BOT;
+  return mutMiddle2(opt.seq) !== mutMiddle2(tgt);
+}
+function mutPrimerCovers(opt){
+  const outer = mutOuter6(opt.seq);
+  if (outer === mutOuter6(MUT_TARGET_TOP)) return 'top';
+  if (outer === mutOuter6(MUT_TARGET_BOT)) return 'bot';
+  return null;
+}
+function isMutPrimerValid(opt){ return mutPrimerCovers(opt) !== null; }
+
+function renderMutTemplatePanel(){
+  const el = document.getElementById('mutTemplatePanel');
+  if (!el) return;
+  const top5 = MUT_TOP_LEFT_53.join('');
+  const top3 = MUT_TOP_RIGHT_53.join('');
+  const bot3 = MUT_BOT_LEFT_35.join('');
+  const bot5 = MUT_BOT_RIGHT_35.join('');
+  el.innerHTML = `
+    <div class="lab">模板 DNA（端部 8 碱基）</div>
+    <div class="seg">上链：5'-<b>${top5}</b><span class="mid"> …… </span><b>${top3}</b>-3'</div>
+    <div class="seg">下链：3'-<b>${bot3}</b><span class="mid"> …… </span><b>${bot5}</b>-5'</div>
+    <div class="note">提示：每条引物为 8 碱基。判定时只看外侧 6 碱基（左 3 + 右 3）能否与模板 3' 端反向互补，<b>中间 2 碱基</b>作为可改写的"突变位点"，会被聚合酶写入新链。</div>
+  `;
+}
+
+function renderMutPrimers(){
+  renderMutTemplatePanel();
+  const wrap = document.getElementById('mutPrimerOptions');
+  wrap.innerHTML = '';
+  mutPrimerSelected.clear();
+  shuffleInPlace(mutPrimerOptions);
+  mutPrimerOptions.forEach((p, i)=>{
+    const b = document.createElement('button');
+    b.className = 'option';
+    b.textContent = `5'-${p.seq}-3'`;
+    b.onclick = ()=>{
+      if (mutPrimerSelected.has(i)){
+        mutPrimerSelected.delete(i); b.classList.remove('selected');
+      } else {
+        if (mutPrimerSelected.size >= 2) return;
+        mutPrimerSelected.add(i); b.classList.add('selected');
+      }
+      const fb = document.getElementById('mutPrimerFeedback');
+      fb.textContent = ''; fb.className = 'feedback';
+    };
+    wrap.appendChild(b);
+  });
+}
+
+function checkMutPrimers(){
+  const fb = document.getElementById('mutPrimerFeedback');
+  if (mutPrimerSelected.size !== 2){
+    fb.textContent = '请选择 2 个引物。';
+    fb.className = 'feedback bad';
+    return;
+  }
+  const picked = [...mutPrimerSelected].map(i => mutPrimerOptions[i]);
+  const allValid = picked.every(isMutPrimerValid);
+  const covers = picked.map(mutPrimerCovers);
+  const coversBoth = (covers[0] === 'top' && covers[1] === 'bot') || (covers[0] === 'bot' && covers[1] === 'top');
+  const numMutated = picked.filter(isMutationPrimer).length;
+
+  if (allValid && coversBoth && numMutated === 1){
+    fb.textContent = '正确！一条普通引物 + 一条带突变的引物，可以开始定点突变 PCR。';
+    fb.className = 'feedback ok';
+    setTimeout(()=>{ setActive('step-mut-cycles'); showMutParentDNA(); }, 600);
+  } else {
+    errorLog.mutPrimer.wrongCount++;
+    errorLog.mutPrimer.wrongChoices.push(picked.map(p => "5'-"+p.seq+"-3'"));
+    if (allValid && !coversBoth){
+      fb.textContent = '两条引物都合法，但都对应同一条模板链。需要分别覆盖上链与下链的 3\' 端。';
+    } else if (allValid && coversBoth && numMutated === 0){
+      fb.textContent = '两条都是普通引物，没有引入突变。需要其中一条的中间 2 碱基与模板不互补（突变位点）。';
+    } else if (allValid && coversBoth && numMutated === 2){
+      fb.textContent = '两条都带突变。本步只需要 1 条突变引物 + 1 条普通引物。';
+    } else {
+      fb.textContent = '引物选择不正确：请检查每条引物的外侧 6 碱基（左 3 + 右 3）能否与某条模板 3\' 端反向互补。';
+    }
+    fb.className = 'feedback bad';
+  }
+}
+
+/* ========================================================
+   第八步：定点突变 PCR 循环动画
+   核心思路：每个 DNA handle 带 mutationFlag。
+     - 亲本：mutationFlag=false
+     - 退火：在使用突变引物的那一侧位置画 2 个红色突变碱基
+     - 延伸：新链复制时如果"模板侧带突变"，新链相应位置也保留红色
+     - 一轮结束后 count*2，每个新生成的 dsDNA：其中由突变引物启动的那条新链一定带突变；
+       为简化展示，我们把所有"含突变"的双链分子用红色突变碱基标记。
+   突变引物（突变型）对应 上链 3' 端，新链画在 Y_NEW_FROM_TOP 的右端。
+   突变碱基插入位置：在 midEnd-1*BW 与 midEnd-2*BW 处显示（即位于右端 6 碱基左侧，
+   贴着中间直线的右段最末端，标红）。
+   ======================================================== */
+let mutCycle = 0;
+let mutCount = 1;
+let mutBusy = false;
+let mutPhase = 'idle';
+let mutPaused = false;
+let mutResumeWaiters = [];
+let mutCurHandles = [];
+
+function mutWaitIfPaused(){
+  if (!mutPaused) return Promise.resolve();
+  return new Promise(res => mutResumeWaiters.push(res));
+}
+function mutSetPaused(v){
+  mutPaused = v;
+  if (!mutPaused){
+    const ws = mutResumeWaiters; mutResumeWaiters = [];
+    ws.forEach(w=>w());
+  }
+}
+function mutTween(dur, onUpdate){
+  return new Promise(resolve=>{
+    let acc = 0;
+    let last = performance.now();
+    function step(now){
+      if (mutPaused){
+        mutWaitIfPaused().then(()=>{
+          last = performance.now();
+          requestAnimationFrame(step);
+        });
+        return;
+      }
+      acc += (now - last);
+      last = now;
+      const k = Math.min(1, acc/dur);
+      const e = 1 - Math.pow(1-k, 3);
+      onUpdate(e);
+      if (k<1) requestAnimationFrame(step);
+      else resolve();
+    }
+    requestAnimationFrame(step);
+  });
+}
+async function mutPausableDelay(ms){
+  const slice = 40;
+  let elapsed = 0;
+  while (elapsed < ms){
+    if (mutPaused) await mutWaitIfPaused();
+    const t = Math.min(slice, ms - elapsed);
+    await new Promise(r=>setTimeout(r, t));
+    elapsed += t;
+  }
+}
+
+function setMutPhaseText(t){ document.getElementById('mutPhaseText').textContent = t; }
+function updateMutButtons(){
+  const stepBtn  = document.getElementById('mutStepBtn');
+  const autoBtn  = document.getElementById('mutAutoBtn');
+  const pauseBtn = document.getElementById('mutPauseBtn');
+  if (mutBusy){
+    stepBtn.disabled = true;
+    autoBtn.disabled = true;
+    pauseBtn.disabled = false;
+    pauseBtn.textContent = mutPaused ? '继续' : '暂停';
+  } else {
+    pauseBtn.disabled = true;
+    pauseBtn.textContent = '暂停';
+    if (mutCycle >= 3 && mutPhase === 'idle'){
+      stepBtn.disabled = true;
+      autoBtn.disabled = true;
+    } else {
+      stepBtn.disabled = false;
+      autoBtn.disabled = (mutPhase !== 'idle');
+    }
+  }
+}
+
+/* 突变阶段：绘制配对 DNA（8 碱基端、缩短中间线）；按 {topMut, botMut} 标突变 */
+function drawMutPairedDNA(container, flags){
+  const opts = { sideBases: MUT_SIDE_BASES, middleLen: MUT_MIDDLE_LEN };
+  const top = drawStrand(container, Y_TOP_PAIRED, MUT_TOP_LEFT_53, MUT_TOP_RIGHT_53, "5'", "3'", '#cfe3f5', '#1f4e79', opts);
+  const bot = drawStrand(container, Y_BOT_PAIRED, MUT_BOT_LEFT_35, MUT_BOT_RIGHT_35, "3'", "5'", '#fde4b8', '#a06a1f', opts);
+  const f = (flags && typeof flags === 'object') ? flags : { topMut: !!flags, botMut: !!flags };
+  let mutMarks = null;
+  if (f.topMut || f.botMut){
+    mutMarks = drawMutationMarks(container, Y_TOP_PAIRED, Y_BOT_PAIRED, f);
+  }
+  return { top, bot, mutMarks };
+}
+
+/* 在配对状态下覆盖中间 2 碱基（idx 3,4 of right end）：每条链独立判断。
+   原始亲本的两条链永远是 false；只有新合成的链可能是 true。
+   topMut=true → top 中段画红 CC；botMut=true → bot 中段画红 GG。
+   每个 mark 用 data-strand 标记自己属于 top 还是 bot，便于变性时正确跟随。 */
+function drawMutationMarks(parent, yTop, yBot, flags){
+  const midEnd = MUT_SIDE_BASES*BASE_W + MUT_MIDDLE_LEN;
+  const g = el('g',{});
+  parent.appendChild(g);
+  for (let i=0;i<2;i++){
+    const x = midEnd + (3+i)*BASE_W;
+    if (flags.botMut){
+      const m = drawBase(g, x, yBot, MUT_INSERT[i], '#f5b7b1');
+      m.setAttribute('data-strand', 'bot');
+    }
+    if (flags.topMut){
+      const m = drawBase(g, x, yTop, COMPLEMENT[MUT_INSERT[i]], '#f5b7b1');
+      m.setAttribute('data-strand', 'top');
+    }
+  }
+  return g;
+}
+
+function showMutParentDNA(){
+  mutCycle = 0;
+  mutCount = 1;
+  mutPhase = 'idle';
+  mutPaused = false;
+  mutResumeWaiters = [];
+  mutHandlesMutFlags = [{ topMut: false, botMut: false }];
+  setCycleCounter(0);
+  setTitle('定点突变 PCR：亲本 DNA', '亲本无突变；每轮分裂产生 2 个子分子，其中由突变引物启动的那条会带红色 GG。');
+  setMutPhaseText('尚未开始');
+  document.getElementById('mutCycleNum').textContent = '0';
+  // 渲染亲本（无突变，8 碱基端）
+  clearStage();
+  const { positions, totalH } = layoutPositions(1, STATIC_BOX_H, MUT_DNA_W);
+  setStageSize(Math.max(360, totalH));
+  positions.forEach(p=>{
+    const c = makeDNAContainer(p.x, p.y);
+    drawMutPairedDNA(c, { topMut: false, botMut: false });
+  });
+  updateMutButtons();
+}
+
+/* 准备一轮：根据 mutHandlesMutFlags 决定每个分子两条链的突变状态 */
+let mutHandlesMutFlags = [{ topMut: false, botMut: false }];
+function prepareMutRound(){
+  const n = mutHandlesMutFlags.length;
+  const { positions, totalH } = layoutPositions(n, ANIM_BOX_H, MUT_DNA_W);
+  clearStage();
+  setStageSize(totalH);
+  mutCurHandles = positions.map((p, i)=>{
+    const container = makeDNAContainer(p.x, p.y);
+    const flag = mutHandlesMutFlags[i];
+    const { top, bot, mutMarks } = drawMutPairedDNA(container, flag);
+    return { container, top, bot, mutMarks, topMut: flag.topMut, botMut: flag.botMut };
+  });
+}
+
+/* 突变变性：移动上下链；红色覆盖碱基 mutMarks 跟随对应链平移 */
+async function mutAnimateDenature(h){
+  const promises = [
+    moveStrandY(h.top, Y_TOP_PAIRED, Y_TOP_DENATURED, 800),
+    moveStrandY(h.bot, Y_BOT_PAIRED, Y_BOT_DENATURED, 800)
+  ];
+  if (h.mutMarks){
+    promises.push(mutTween(800, e=>{
+      const yT = Y_TOP_PAIRED + (Y_TOP_DENATURED - Y_TOP_PAIRED)*e;
+      const yB = Y_BOT_PAIRED + (Y_BOT_DENATURED - Y_BOT_PAIRED)*e;
+      const groups = h.mutMarks.querySelectorAll('g');
+      // 按 data-strand 决定每个 mark 跟随 top 还是 bot
+      groups.forEach((g)=>{
+        const m = g.getAttribute('transform').match(/translate\(([-\d.]+),([-\d.]+)\)/);
+        if (!m) return;
+        const x = +m[1];
+        const onTop = g.getAttribute('data-strand') === 'top';
+        g.setAttribute('transform', `translate(${x},${onTop ? yT : yB})`);
+      });
+    }));
+  }
+  await Promise.all(promises);
+}
+
+/* 突变退火：左端用 normal primer (与第五步一样)；右端用 mutation primer，
+   引物本身在中间偏右处带 2 个红色突变碱基（位置 midEnd-2*BW、midEnd-1*BW）。
+   引物 P1（下链左端，新链 = ATGCGT，绿色）：6 碱基
+   引物 P2（上链右端，突变型）：8 碱基（左 3 + 红 2 + 右 3）
+   位置（针对新链 2，画在 Y_NEW_FROM_TOP）：
+     - 红 2 在 midEnd-2*BW 与 midEnd-1*BW
+     - 然后右 3 碱基在 midEnd..midEnd+2*BW（突变引物外侧右 3）= COMPLEMENT(TOP_RIGHT_53[i]) 的前 3 个
+     - 左 3 碱基在 midEnd-5*BW..midEnd-3*BW = COMPLEMENT(TOP_RIGHT_53[i]) 的后 3 个
+     注意：突变引物外侧 6 碱基 outer = "GTACGT"（即 5'-GTA-CGT-3'，与上链右端 ACGTAC 反向互补）
+     =>  上链右端模板位 i=0..5 对应碱基 ACGTAC，引物外侧 i 位 = COMPLEMENT(模板)，
+         即 P2 外侧 = TGCATG（按从左到右画在 midEnd..midEnd+5*BW）。
+         插入 2 个突变在中间（即 i=3 之前），所以图上：
+           midEnd + 0*BW..2*BW: TGC（外侧前 3）
+           midEnd - 2*BW..-1*BW: 不对——空间不够。
+   简化：突变引物的红 2 碱基显示在右端 6 碱基<b>之前</b>（紧贴中间线），即：
+     midEnd - 2*BW: 红 G
+     midEnd - 1*BW: 红 G
+     midEnd + 0..5*BW: TGCATG（与原引物 2 同位置）
+   这样仍然连贯：突变碱基紧挨右端 6 碱基左侧，视觉上是"中间插入的 2 个红碱基"。
+*/
+async function mutAnimateAnneal(h){
+  const c = h.container;
+  const primerColor = '#b6e3c6';
+  const mutColor = '#f5b7b1';
+  const midEnd = MUT_SIDE_BASES*BASE_W + MUT_MIDDLE_LEN;
+
+  h.primer1G = el('g',{}); c.appendChild(h.primer1G);
+  h.primer2G = el('g',{}); c.appendChild(h.primer2G);
+
+  // 引物 1：下链左端 8 碱基（无突变）
+  drawText(h.primer1G, -16, Y_NEW_FROM_BOT+15, "5'", '#2d8659');
+  drawText(h.primer1G, MUT_SIDE_BASES*BASE_W+2, Y_NEW_FROM_BOT+15, "3'", '#2d8659');
+  for (let i=0;i<MUT_SIDE_BASES;i++){
+    const ch = COMPLEMENT[MUT_BOT_LEFT_35[i]];
+    drawBase(h.primer1G, i*BASE_W, Y_NEW_FROM_BOT, ch, primerColor);
+  }
+
+  // 引物 2：上链右端 8 碱基；中间 2 碱基（idx 3,4）直接覆盖为红色突变碱基
+  drawText(h.primer2G, midEnd-12, Y_NEW_FROM_TOP+15, "3'", '#2d8659');
+  drawText(h.primer2G, midEnd + MUT_SIDE_BASES*BASE_W + 4, Y_NEW_FROM_TOP+15, "5'", '#2d8659');
+  for (let i=0;i<MUT_SIDE_BASES;i++){
+    if (i === 3 || i === 4){
+      const ch = MUT_INSERT[i-3];
+      drawBase(h.primer2G, midEnd + i*BASE_W, Y_NEW_FROM_TOP, ch, mutColor);
+    } else {
+      const ch = COMPLEMENT[MUT_TOP_RIGHT_53[i]];
+      drawBase(h.primer2G, midEnd + i*BASE_W, Y_NEW_FROM_TOP, ch, primerColor);
+    }
+  }
+
+  await mutPausableDelay(500);
+}
+
+/* 突变延伸：从两个引物 3' 端开始往中间生长。
+   - 新链 1（下链模板，画在 Y_NEW_FROM_BOT）：从 6*BW 向右生长到 midEnd+6*BW；
+     如果父分子 hasMut=true，则在生长到中段时把 2 个红色突变碱基也补上（midEnd-2*BW、midEnd-1*BW）。
+     原因：父链右端模板带突变，新链复制时也把突变写入对应位置。
+   - 新链 2（上链模板，画在 Y_NEW_FROM_TOP）：从 midEnd-2*BW 向左生长到 0；
+     此链由突变引物启动，<b>始终</b>把 2 个红色突变碱基写入新链中段（即来自引物本身）。
+*/
+async function mutAnimateExtend(h){
+  const c = h.container;
+  const midStart = MUT_SIDE_BASES*BASE_W;
+  const midEnd = midStart + MUT_MIDDLE_LEN;
+  const mutColor = '#f5b7b1';
+
+  h.ext1G = el('g',{}); c.appendChild(h.ext1G);
+  h.ext2G = el('g',{}); c.appendChild(h.ext2G);
+
+  const y1 = Y_NEW_FROM_BOT + BASE_H/2;
+  const y2 = Y_NEW_FROM_TOP + BASE_H/2;
+  const line1 = drawLine(h.ext1G, midStart, y1, midStart, y1, '#2d8659');
+  const line2 = drawLine(h.ext2G, midEnd, y2, midEnd, y2, '#2d8659');
+
+  await mutTween(900, e=>{
+    line1.setAttribute('x2', midStart + MUT_MIDDLE_LEN*e);
+    line2.setAttribute('x2', midEnd - MUT_MIDDLE_LEN*e);
+  });
+
+  // 端部 8 碱基逐个加上：按当前模板实际碱基配对。
+  // 新链 1（沿 bot 模板，绘于 Y_NEW_FROM_BOT）：bot 模板 idx 3,4 是 GG 时（botMut=true），配出红 CC。
+  // 新链 2（沿 top 模板，绘于 Y_NEW_FROM_TOP）：端部 8 碱基不含变异位点，本循环按普通绿色绘制。
+  for (let i=0;i<MUT_SIDE_BASES;i++){
+    const x = midEnd + i*BASE_W;
+    let ch, fill;
+    if (h.botMut && (i === 3 || i === 4)){
+      ch = COMPLEMENT[MUT_INSERT[i-3]];
+      fill = mutColor;
+    } else {
+      ch = COMPLEMENT[MUT_BOT_RIGHT_35[i]];
+      fill = '#b6e3c6';
+    }
+    const g = drawBase(h.ext1G, x, Y_NEW_FROM_BOT, ch, fill);
+    g.setAttribute('opacity','0');
+    requestAnimationFrame(()=>g.setAttribute('opacity','1'));
+
+    const j = MUT_SIDE_BASES - 1 - i;
+    const x2 = j*BASE_W;
+    const ch2 = COMPLEMENT[MUT_TOP_LEFT_53[j]];
+    const g2 = drawBase(h.ext2G, x2, Y_NEW_FROM_TOP, ch2, '#b6e3c6');
+    g2.setAttribute('opacity','0');
+    requestAnimationFrame(()=>g2.setAttribute('opacity','1'));
+
+    await mutPausableDelay(140);
+  }
+
+  // 若沿 top 模板复制时模板带变异（topMut=true），在新链 2 的中段也补上红 GG。
+  if (h.topMut){
+    for (let i=0;i<2;i++){
+      const x = midEnd + (3+i)*BASE_W;
+      const g = drawBase(h.ext2G, x, Y_NEW_FROM_TOP, MUT_INSERT[i], mutColor);
+      g.setAttribute('opacity','0');
+      requestAnimationFrame(()=>g.setAttribute('opacity','1'));
+    }
+  }
+
+  await mutPausableDelay(150);
+}
+
+async function mutDoDenature(){
+  setTitle(`突变循环 ${mutCycle+1}：变性（95℃）`, '双链分开成单链。');
+  setMutPhaseText('变性');
+  await mutPausableDelay(300);
+  await Promise.all(mutCurHandles.map(mutAnimateDenature));
+  await mutPausableDelay(200);
+}
+async function mutDoAnneal(){
+  setTitle(`突变循环 ${mutCycle+1}：退火（55–68℃）`, '上链右端结合<b>突变引物</b>（带红色碱基）。');
+  setMutPhaseText('退火');
+  await Promise.all(mutCurHandles.map(mutAnimateAnneal));
+  await mutPausableDelay(200);
+}
+async function mutDoExtend(){
+  setTitle(`突变循环 ${mutCycle+1}：延伸（72℃）`, '聚合酶按当前模板配对生长出新链。');
+  setMutPhaseText('延伸');
+  await Promise.all(mutCurHandles.map(mutAnimateExtend));
+  await mutPausableDelay(400);
+}
+
+async function mutFinishRound(){
+  mutCycle += 1;
+  // 半保留复制，按链独立追踪：
+  //   子分子 A：保留父 bot 链 + 新合成 top 链（沿 bot 模板配对）
+  //     - 新 top 链是否变异 = 父 botMut（模板 GG → 新链 CC）
+  //     - bot 链状态保留
+  //   子分子 B：保留父 top 链 + 新合成 bot 链（沿 top 模板配对，由突变引物启动）
+  //     - 新 bot 链由突变引物自带 → 一定 botMut=true（红 GG）
+  //     - top 链状态保留
+  //   注：模型上把"父 top → 子 A 的 bot/top 哪个继承"做了简化：每轮按上下位置重排。
+  //   实际只关心"这个分子是否带变异",这里以单链状态精确驱动渲染。
+  const next = [];
+  mutHandlesMutFlags.forEach(p => {
+    next.push({ topMut: p.botMut, botMut: p.botMut });
+    next.push({ topMut: p.topMut, botMut: true     });
+  });
+  mutHandlesMutFlags = next;
+  mutCount = mutHandlesMutFlags.length;
+
+  setTitle(`突变循环 ${mutCycle} 完成：共 ${mutCount} 个 DNA 分子`, '');
+  setMutPhaseText('已完成 ' + mutCycle + ' 次循环');
+  setCycleCounter(mutCycle);
+  document.getElementById('mutCycleNum').textContent = mutCycle;
+  await mutPausableDelay(300);
+  // 静态显示下一轮的状态：每个分子按 mutHandlesMutFlags 标突变
+  const n = mutHandlesMutFlags.length;
+  const { positions, totalH } = layoutPositions(n, STATIC_BOX_H, MUT_DNA_W);
+  clearStage();
+  setStageSize(Math.max(360, totalH));
+  positions.forEach((p, i)=>{
+    const c = makeDNAContainer(p.x, p.y);
+    drawMutPairedDNA(c, mutHandlesMutFlags[i]);
+  });
+  mutCurHandles = [];
+}
+
+async function mutNextStep(){
+  if (mutBusy) return;
+  if (mutCycle >= 3) return;
+  mutBusy = true; updateMutButtons();
+  try {
+    if (mutPhase === 'idle'){
+      prepareMutRound();
+      await mutDoDenature();
+      mutPhase = 'anneal';
+    } else if (mutPhase === 'anneal'){
+      await mutDoAnneal();
+      mutPhase = 'extend';
+    } else if (mutPhase === 'extend'){
+      await mutDoExtend();
+      await mutFinishRound();
+      mutPhase = 'idle';
+    }
+  } finally {
+    mutBusy = false;
+    if (mutCycle >= 3 && mutPhase === 'idle'){
+      const fb = document.getElementById('mutCycleFeedback');
+      const muts = mutHandlesMutFlags.filter(x=>x.topMut||x.botMut).length;
+      fb.textContent = `已完成 3 次突变循环：共 ${mutCount} 个 DNA 分子，其中 ${muts} 个含突变碱基。请进入下一题。`;
+      fb.className = 'feedback ok';
+      updateMutButtons();
+      setTimeout(()=>{ setActive('step-mut-quiz'); renderMutQuiz(); }, 800);
+      return;
+    }
+    updateMutButtons();
+  }
+}
+
+async function mutRunFullCycle(){
+  if (mutBusy || mutPhase !== 'idle' || mutCycle >= 3) return;
+  mutBusy = true; updateMutButtons();
+  try {
+    prepareMutRound();
+    await mutDoDenature();
+    await mutDoAnneal();
+    await mutDoExtend();
+    await mutFinishRound();
+    mutPhase = 'idle';
+  } finally {
+    mutBusy = false;
+    if (mutCycle >= 3){
+      const fb = document.getElementById('mutCycleFeedback');
+      const muts = mutHandlesMutFlags.filter(x=>x.topMut||x.botMut).length;
+      fb.textContent = `已完成 3 次突变循环：共 ${mutCount} 个 DNA 分子，其中 ${muts} 个含突变碱基。请进入下一题。`;
+      fb.className = 'feedback ok';
+      updateMutButtons();
+      setTimeout(()=>{ setActive('step-mut-quiz'); renderMutQuiz(); }, 800);
+      return;
+    }
+    updateMutButtons();
+  }
+}
+
+function mutTogglePause(){
+  if (!mutBusy) return;
+  mutSetPaused(!mutPaused);
+  updateMutButtons();
+}
+
+function restartMutCycle(){
+  if (mutBusy){
+    mutSetPaused(false);
+  }
+  mutBusy = false;
+  document.getElementById('mutCycleFeedback').textContent = '';
+  document.getElementById('mutCycleFeedback').className = 'feedback';
+  showMutParentDNA();
+}
+
+/* ========================================================
+   第九步：突变思考题
+   亲本（top, bot 都无变异）→
+     第 1 轮：得到 2 个子分子 —— A=(F,F)、B=(F,T)，无完全变异。
+     第 2 轮：B 的子代之一 = (T,T) → 首次出现双链都带变异的"完全变异"DNA。
+   ======================================================== */
+const mutQuizOpts = [
+  { text:'第 1 次循环后', correct:false },
+  { text:'第 2 次循环后', correct:true  },
+  { text:'第 3 次循环后', correct:false },
+  { text:'始终不会出现', correct:false }
+];
+let mutQuizSelected = null;
+let mutQuizAnswered = false;
+
+function renderMutQuiz(){
+  mutQuizSelected = null;
+  mutQuizAnswered = false;
+  const wrap = document.getElementById('mutQuizOptions');
+  wrap.innerHTML = '';
+  shuffleInPlace(mutQuizOpts);
+  mutQuizOpts.forEach((o, i)=>{
+    const b = document.createElement('button');
+    b.className = 'option';
+    b.textContent = o.text;
+    b.onclick = ()=>{
+      if (mutQuizAnswered) return;
+      mutQuizSelected = i;
+      [...wrap.querySelectorAll('button')].forEach(x=>x.classList.remove('selected'));
+      b.classList.add('selected');
+      const fb = document.getElementById('mutQuizFeedback');
+      fb.textContent = ''; fb.className = 'feedback';
+    };
+    wrap.appendChild(b);
+  });
+}
+
+function checkMutQuiz(){
+  const fb = document.getElementById('mutQuizFeedback');
+  if (mutQuizSelected === null){
+    fb.textContent = '请先选择一个答案。';
+    fb.className = 'feedback bad';
+    return;
+  }
+  const wrap = document.getElementById('mutQuizOptions');
+  const btns = [...wrap.querySelectorAll('button')];
+  const o = mutQuizOpts[mutQuizSelected];
+  if (o.correct){
+    mutQuizAnswered = true;
+    btns.forEach(b=>b.classList.remove('selected'));
+    btns[mutQuizSelected].classList.add('correct');
+    fb.textContent = '回答正确！正在生成总结……';
+    fb.className = 'feedback ok';
+    setTimeout(()=>showSummary('mutation'), 700);
+  } else {
+    errorLog.mutQuiz.wrongCount++;
+    errorLog.mutQuiz.wrongChoices.push(o.text);
+    btns[mutQuizSelected].classList.remove('selected');
+    btns[mutQuizSelected].classList.add('wrong');
+    setTimeout(()=>btns[mutQuizSelected].classList.remove('wrong'), 800);
+    fb.textContent = '不正确，再想一想，可重新选择。';
+    fb.className = 'feedback bad';
+    mutQuizSelected = null;
+  }
+}
+
+/* 进入第八步动画前，mutHandlesMutFlags 在 showMutParentDNA 中初始化 */
 
 /* ========================================================
    初始化
