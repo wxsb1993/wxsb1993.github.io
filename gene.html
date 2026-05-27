@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基因型概率计算器（双位点自交）</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1e40af;
+    --bg: #f6f8fc;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+    --accent: #f59e0b;
+    --green: #10b981;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 20px 60px;
+  }
+  h1 {
+    font-size: 24px;
+    margin: 0 0 6px;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 24px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+  .card h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 14px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 24px;
+    align-items: flex-end;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .field label {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  input[type="number"], select {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    min-width: 140px;
+  }
+  input[type="number"]:focus, select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  }
+  button {
+    padding: 9px 18px;
+    border: none;
+    border-radius: 6px;
+    background: var(--primary);
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover { background: var(--primary-dark); }
+  button.secondary {
+    background: white;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  button.secondary:hover { background: var(--bg); }
+
+  .checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+  }
+  .checkbox-grid label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+  .checkbox-grid label:hover { border-color: var(--primary); }
+  .checkbox-grid input { accent-color: var(--primary); }
+  .checkbox-grid label.checked {
+    background: #eff6ff;
+    border-color: var(--primary);
+  }
+  .quick-btns {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .quick-btns button {
+    padding: 4px 10px;
+    font-size: 12px;
+    background: white;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .quick-btns button:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .stat-value {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-value.accent { color: var(--accent); }
+
+  .table-wrap {
+    overflow: auto;
+    max-height: 480px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+  }
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  thead th {
+    position: sticky;
+    top: 0;
+    background: #f8fafc;
+    border-bottom: 2px solid var(--border);
+    padding: 10px 8px;
+    font-weight: 600;
+    color: var(--muted);
+    text-align: right;
+    white-space: nowrap;
+    z-index: 2;
+  }
+  thead th:first-child {
+    text-align: center;
+    position: sticky;
+    left: 0;
+    z-index: 3;
+  }
+  tbody td {
+    padding: 8px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+  }
+  tbody td:first-child {
+    text-align: center;
+    background: #f8fafc;
+    font-weight: 600;
+    position: sticky;
+    left: 0;
+  }
+  tbody tr:hover td { background: #f8fafc; }
+  tbody tr:hover td:first-child { background: #eff6ff; }
+  td.dim { color: #cbd5e1; }
+  td.strong { color: var(--green); font-weight: 600; }
+  .group-sep { border-left: 2px solid var(--border); }
+
+  .hint {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 8px;
+  }
+  details {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 12px;
+  }
+  details summary { cursor: pointer; }
+  details pre {
+    background: #f8fafc;
+    padding: 10px;
+    border-radius: 6px;
+    overflow: auto;
+    font-size: 12px;
+  }
+  .error {
+    color: #dc2626;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>基因型概率计算器</h1>
+  <p class="subtitle">两个独立位点自交 n 代,可在每一代施加人工选择。默认从 F1 (AaBb) 开始,模拟亲本 AAbb × aaBB 杂交后的自交群体。</p>
+
+  <div class="card">
+    <h2>参数设置</h2>
+    <div class="row">
+      <div class="field">
+        <label for="generations">自交代数 n</label>
+        <input type="number" id="generations" min="1" max="1000" value="10">
+      </div>
+      <div class="field">
+        <label for="startGenotype">起始群体 (F0)</label>
+        <select id="startGenotype">
+          <option value="AaBb" selected>AaBb (来自 AAbb × aaBB)</option>
+          <option value="AABB">AABB</option>
+          <option value="AABb">AABb</option>
+          <option value="AaBB">AaBB</option>
+          <option value="AAbb">AAbb</option>
+          <option value="Aabb">Aabb</option>
+          <option value="aaBB">aaBB</option>
+          <option value="aaBb">aaBb</option>
+          <option value="aabb">aabb</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;min-width:200px;">
+        <label>&nbsp;</label>
+        <div style="display:flex;gap:8px;">
+          <button id="calcBtn">计算</button>
+          <button class="secondary" id="exportBtn">导出 CSV</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>每代保留的基因型 (人工选择)</h2>
+    <div class="checkbox-grid" id="genoBox"></div>
+    <div class="quick-btns">
+      <button data-preset="all">全选</button>
+      <button data-preset="none">全不选</button>
+      <button data-preset="dominant">仅显性 (A_B_)</button>
+      <button data-preset="homo-dom">仅纯合显性 (AABB)</button>
+      <button data-preset="homo">仅纯合 (AABB/AAbb/aaBB/aabb)</button>
+    </div>
+    <p class="hint">未勾选的基因型在每一代繁殖前会被剔除并按剩余群体重新归一化。等同于:每一代播种前先做一次人工筛选。</p>
+    <div class="error" id="errorMsg"></div>
+  </div>
+
+  <div id="results" style="display:none;">
+    <div class="summary" id="summary"></div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="table-wrap">
+        <table id="resultTable">
+          <thead>
+            <tr>
+              <th>n</th>
+              <th>P(A)</th>
+              <th>P(B)</th>
+              <th>杂合度</th>
+              <th class="group-sep">AABB</th>
+              <th>AABb</th>
+              <th>AaBB</th>
+              <th>AaBb</th>
+              <th>AAbb</th>
+              <th>Aabb</th>
+              <th>aaBB</th>
+              <th>aaBb</th>
+              <th>aabb</th>
+            </tr>
+          </thead>
+          <tbody id="resultBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <details>
+      <summary>查看模型说明</summary>
+      <p>单位点自交转移矩阵(行 = 母代,列 = 子代):</p>
+      <pre>          AA      Aa      aa
+   AA  [  1        0       0  ]
+   Aa  [ 0.25    0.50    0.25 ]
+   aa  [  0        0       1  ]</pre>
+      <p>两个位点独立 → 9 种基因型的转移矩阵 = 单位点矩阵的张量积(Kronecker product)。</p>
+      <p>每代流程: P_{n+1} = normalize(select(P_n · M))。 select 把未勾选基因型置 0,normalize 让概率和 = 1。</p>
+    </details>
+  </div>
+</div>
+
+<script>
+  const GENOTYPES = ['AABB','AABb','AaBB','AaBb','AAbb','Aabb','aaBB','aaBb','aabb'];
+
+  // 单位点自交转移概率（行=母代，列=子代），索引 0=纯合显性, 1=杂合, 2=纯合隐性
+  const SINGLE_LOCUS = [
+    [1,    0,    0   ],
+    [0.25, 0.5,  0.25],
+    [0,    0,    1   ],
+  ];
+
+  // 把 9 种基因型转成 (i, j)，其中 i,j ∈ {0:纯合显性, 1:杂合, 2:纯合隐性}
+  function decompose(g){
+    const a = g.slice(0,2);
+    const b = g.slice(2,4);
+    const idx = s => {
+      const lower = s[0].toLowerCase() === s[0] && s[1].toLowerCase() === s[1];
+      const upper = s[0].toUpperCase() === s[0] && s[1].toUpperCase() === s[1];
+      if (upper) return 0;     // AA / BB
+      if (lower) return 2;     // aa / bb
+      return 1;                // Aa / Bb
+    };
+    return [idx(a), idx(b)];
+  }
+  function compose(i, j){
+    const A = ['AA','Aa','aa'][i];
+    const B = ['BB','Bb','bb'][j];
+    return A + B;
+  }
+
+  // 给定母代分布 P (对 9 个基因型)，返回未选择前的子代分布
+  function reproduce(P){
+    const next = Object.fromEntries(GENOTYPES.map(g => [g, 0]));
+    for (const g of GENOTYPES){
+      const p = P[g];
+      if (p === 0) continue;
+      const [i, j] = decompose(g);
+      // 子代分布 = 单位点 i 行 ⊗ 单位点 j 行
+      for (let i2 = 0; i2 < 3; i2++){
+        const wi = SINGLE_LOCUS[i][i2];
+        if (wi === 0) continue;
+        for (let j2 = 0; j2 < 3; j2++){
+          const wj = SINGLE_LOCUS[j][j2];
+          if (wj === 0) continue;
+          next[compose(i2, j2)] += p * wi * wj;
+        }
+      }
+    }
+    return next;
+  }
+
+  function selectAndNormalize(P, kept){
+    const filtered = Object.fromEntries(GENOTYPES.map(g => [g, kept.has(g) ? P[g] : 0]));
+    const total = GENOTYPES.reduce((s, g) => s + filtered[g], 0);
+    if (total === 0) return null;
+    for (const g of GENOTYPES) filtered[g] /= total;
+    return filtered;
+  }
+
+  // 等位基因频率：locus='A' 数大写 A 的个数，locus='B' 数大写 B 的个数，除以 2
+  function alleleFreq(P, locus){
+    let p = 0;
+    for (const g of GENOTYPES){
+      const part = locus === 'A' ? g.slice(0,2) : g.slice(2,4);
+      const cnt = (part.match(new RegExp(locus, 'g')) || []).length;
+      p += P[g] * cnt / 2;
+    }
+    return p;
+  }
+
+  // 杂合度 = P(任一位点为 Aa 或 Bb)
+  function heterozygosity(P){
+    let h = 0;
+    for (const g of GENOTYPES){
+      const [i, j] = decompose(g);
+      if (i === 1 || j === 1) h += P[g];
+    }
+    return h;
+  }
+
+  // ---- UI ----
+  const genoBox = document.getElementById('genoBox');
+  GENOTYPES.forEach(g => {
+    const lbl = document.createElement('label');
+    lbl.innerHTML = `<input type="checkbox" value="${g}" checked><span>${g}</span>`;
+    const cb = lbl.querySelector('input');
+    const sync = () => lbl.classList.toggle('checked', cb.checked);
+    cb.addEventListener('change', sync);
+    sync();
+    genoBox.appendChild(lbl);
+  });
+
+  document.querySelectorAll('.quick-btns button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = btn.dataset.preset;
+      const presets = {
+        all:        new Set(GENOTYPES),
+        none:       new Set(),
+        dominant:   new Set(['AABB','AABb','AaBB','AaBb']),
+        'homo-dom': new Set(['AABB']),
+        homo:       new Set(['AABB','AAbb','aaBB','aabb']),
+      };
+      const target = presets[p];
+      genoBox.querySelectorAll('input').forEach(cb => {
+        cb.checked = target.has(cb.value);
+        cb.dispatchEvent(new Event('change'));
+      });
+    });
+  });
+
+  function format(value){
+    if (value === 0) return '<span class="dim">0</span>';
+    if (value < 1e-4) return `<span class="dim">${value.toExponential(2)}</span>`;
+    if (Math.abs(1 - value) < 1e-6) return '<span class="strong">≈1</span>';
+    if (value > 0.5) return `<span class="strong">${value.toFixed(4)}</span>`;
+    return value.toFixed(4);
+  }
+
+  let lastRows = null;
+
+  function calculate(){
+    const n = parseInt(document.getElementById('generations').value);
+    const start = document.getElementById('startGenotype').value;
+    const kept = new Set(
+      Array.from(genoBox.querySelectorAll('input:checked')).map(cb => cb.value)
+    );
+    const errEl = document.getElementById('errorMsg');
+    errEl.textContent = '';
+
+    if (!Number.isFinite(n) || n < 1 || n > 1000){
+      errEl.textContent = '请输入 1–1000 之间的整数代数。';
+      return;
+    }
+    if (kept.size === 0){
+      errEl.textContent = '至少保留一种基因型。';
+      return;
+    }
+    if (!kept.has(start)){
+      errEl.textContent = `起始群体 ${start} 也必须在保留列表中,否则 F0 就被全部筛掉了。`;
+      return;
+    }
+
+    let P = Object.fromEntries(GENOTYPES.map(g => [g, g === start ? 1 : 0]));
+    const rows = [];
+    rows.push({ n: 0, P: { ...P } });
+
+    for (let k = 1; k <= n; k++){
+      const child = reproduce(P);
+      const selected = selectAndNormalize(child, kept);
+      if (!selected){
+        errEl.textContent = `第 ${k} 代后所有保留基因型概率为 0,无法继续。检查筛选条件。`;
+        break;
+      }
+      P = selected;
+      rows.push({ n: k, P: { ...P } });
+    }
+
+    render(rows);
+    lastRows = rows;
+  }
+
+  function render(rows){
+    document.getElementById('results').style.display = 'block';
+    const body = document.getElementById('resultBody');
+    body.innerHTML = '';
+    rows.forEach(({ n, P }) => {
+      const pA = alleleFreq(P, 'A');
+      const pB = alleleFreq(P, 'B');
+      const h = heterozygosity(P);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${n}</td>
+        <td>${format(pA)}</td>
+        <td>${format(pB)}</td>
+        <td>${format(h)}</td>
+        <td class="group-sep">${format(P.AABB)}</td>
+        <td>${format(P.AABb)}</td>
+        <td>${format(P.AaBB)}</td>
+        <td>${format(P.AaBb)}</td>
+        <td>${format(P.AAbb)}</td>
+        <td>${format(P.Aabb)}</td>
+        <td>${format(P.aaBB)}</td>
+        <td>${format(P.aaBb)}</td>
+        <td>${format(P.aabb)}</td>`;
+      body.appendChild(tr);
+    });
+
+    const last = rows[rows.length - 1];
+    const summary = document.getElementById('summary');
+    const fixedHomo = last.P.AABB + last.P.AAbb + last.P.aaBB + last.P.aabb;
+    const heteroLast = heterozygosity(last.P);
+    const dominantPheno = last.P.AABB + last.P.AABb + last.P.AaBB + last.P.AaBb;
+    summary.innerHTML = `
+      ${stat('当前代数', `n = ${last.n}`)}
+      ${stat('纯合个体占比', format(fixedHomo), 'accent')}
+      ${stat('杂合度', format(heteroLast))}
+      ${stat('双显性表型 A_B_', format(dominantPheno))}
+    `;
+  }
+
+  function stat(label, value, cls=''){
+    return `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value ${cls}">${value}</div></div>`;
+  }
+
+  function exportCSV(){
+    if (!lastRows) return;
+    const header = ['n','P(A)','P(B)','heterozygosity', ...GENOTYPES];
+    const lines = [header.join(',')];
+    lastRows.forEach(({ n, P }) => {
+      lines.push([
+        n,
+        alleleFreq(P, 'A').toFixed(6),
+        alleleFreq(P, 'B').toFixed(6),
+        heterozygosity(P).toFixed(6),
+        ...GENOTYPES.map(g => P[g].toFixed(6))
+      ].join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'genotype_probabilities.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  document.getElementById('calcBtn').addEventListener('click', calculate);
+  document.getElementById('exportBtn').addEventListener('click', exportCSV);
+  document.getElementById('generations').addEventListener('keydown', e => {
+    if (e.key === 'Enter') calculate();
+  });
+
+  calculate();
+</script>
+</body>
+</html>
