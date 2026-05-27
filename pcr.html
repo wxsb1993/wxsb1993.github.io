@@ -689,7 +689,7 @@ function checkTemps(){
   const t2 = +document.getElementById('t2').value;
   const t3 = +document.getElementById('t3').value;
   const fb = document.getElementById('tempFeedback');
-  if (t1===95 && t2>=55 && t2<=68 && t3===72){
+  if (t1===95 && t2>=55 && t2<=68 && t3===75){
     fb.textContent = '温度全部正确！';
     fb.className = 'feedback ok';
     setTimeout(()=>{ setActive('step-purpose'); renderPurpose(); }, 500);
@@ -991,12 +991,12 @@ function adviceTemps(wrongList){
     if (c.变性 > 95) tips.add(`变性温度选了 ${c.变性}℃ 偏高：会使 Taq DNA 聚合酶失活，标准做法是 95℃ 即可。`);
     if (c.退火 < 55) tips.add(`退火温度选了 ${c.退火}℃ 偏低：温度过低会让引物与模板的非特异结合增多，扩增出非目的片段。退火一般在 55–68℃。`);
     if (c.退火 > 68) tips.add(`退火温度选了 ${c.退火}℃ 偏高：温度高于引物的 Tm，引物难以与模板结合，无法启动合成。退火应在 55–68℃。`);
-    if (c.延伸 !== 72){
-      if (c.延伸 < 70) tips.add(`延伸温度选了 ${c.延伸}℃ 偏低：低于 Taq 酶的最适温度，合成速度慢且容易出错。延伸的标准温度是 72℃。`);
-      if (c.延伸 > 75) tips.add(`延伸温度选了 ${c.延伸}℃ 偏高：会降低 Taq 酶活性。延伸的标准温度是 72℃，这是 Taq 酶活性最强的温度。`);
+    if (c.延伸 !== 75){
+      if (c.延伸 < 73) tips.add(`延伸温度选了 ${c.延伸}℃ 偏低：低于 Taq 酶的最适温度区间，合成速度慢且容易出错。延伸的标准温度是 75℃。`);
+      if (c.延伸 > 78) tips.add(`延伸温度选了 ${c.延伸}℃ 偏高：会降低 Taq 酶活性。延伸的标准温度是 75℃，这是 Taq 酶活性最强的温度。`);
     }
   });
-  if (tips.size === 0) tips.add('请按"变性 95℃、退火 55–68℃、延伸 72℃"三档对照思考各阶段为什么需要这个温度。');
+  if (tips.size === 0) tips.add('请按"变性 95℃、退火 55–68℃、延伸 75℃"三档对照思考各阶段为什么需要这个温度。');
   return [...tips].join(' ');
 }
 
@@ -1009,7 +1009,7 @@ function advicePurpose(wrongList){
       const p = w.picked;
       if (w.step === '变性'){
         if (p.includes('引物与模板结合')) tips.add('变性≠退火：变性是把双链解开成单链，"引物与模板结合"是退火阶段的事。');
-        else if (p.includes('催化合成子链')) tips.add('变性阶段并没有合成子链：合成发生在 72℃ 的延伸阶段，由 Taq DNA 聚合酶完成。');
+        else if (p.includes('催化合成子链')) tips.add('变性阶段并没有合成子链：合成发生在 75℃ 的延伸阶段，由 Taq DNA 聚合酶完成。');
         else if (p.includes('两条单链重新结合')) tips.add('刚好相反：变性是让双链分开，而不是让它们重新结合。');
         else tips.add('变性的本质是：高温破坏碱基间的氢键，使 DNA 双链解开为两条单链。');
       }
@@ -1142,7 +1142,7 @@ function showSummary(phase){
       reco.className = 'summary-row';
       const recos = [];
       if (wrongKeys.includes('order') || wrongKeys.includes('temps') || wrongKeys.includes('purpose'))
-        recos.push('把"温度—事件—目的"三者一一对应起来记：95℃ 断氢键（变性）→ 55–68℃ 引物配对（退火）→ 72℃ Taq 酶合成（延伸）。');
+        recos.push('把"温度—事件—目的"三者一一对应起来记：95℃ 断氢键（变性）→ 55–68℃ 引物配对（退火）→ 75℃ Taq 酶合成（延伸）。');
       if (wrongKeys.includes('purpose') || wrongKeys.includes('primer'))
         recos.push('牢记 DNA 复制的两个铁律：碱基互补配对（A-T、G-C）；新链只能沿 5\'→3\' 方向延长。');
       if (wrongKeys.includes('primer'))
@@ -1649,7 +1649,7 @@ async function doAnneal(){
   await pausableDelay(200);
 }
 async function doExtend(){
-  setTitle(`循环 ${cycle+1}：延伸（72℃）`, "DNA 聚合酶以 dNTP 为原料，沿 5'→3' 方向合成新链");
+  setTitle(`循环 ${cycle+1}：延伸（75℃）`, "DNA 聚合酶以 dNTP 为原料，沿 5'→3' 方向合成新链");
   setPhaseText('延伸');
   await Promise.all(curHandles.map(animateExtend));
   await pausableDelay(400);
@@ -2156,7 +2156,7 @@ async function mutDoAnneal(){
   await mutPausableDelay(200);
 }
 async function mutDoExtend(){
-  setTitle(`突变循环 ${mutCycle+1}：延伸（72℃）`, '聚合酶按当前模板配对生长出新链。');
+  setTitle(`突变循环 ${mutCycle+1}：延伸（75℃）`, '聚合酶按当前模板配对生长出新链。');
   setMutPhaseText('延伸');
   await Promise.all(mutCurHandles.map(mutAnimateExtend));
   await mutPausableDelay(400);
