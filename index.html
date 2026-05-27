@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生物互动学习</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1e40af;
+    --bg: #f6f8fc;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(180deg, #eef2ff 0%, var(--bg) 40%);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 60px 24px 40px;
+    flex: 1;
+    width: 100%;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  header h1 {
+    font-size: 32px;
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
+  }
+  header p {
+    color: var(--muted);
+    font-size: 16px;
+    margin: 0;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  .tile {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .tile::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 60%, rgba(37, 99, 235, 0.06));
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .tile:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary);
+    box-shadow: 0 12px 24px -8px rgba(37, 99, 235, 0.18);
+  }
+  .tile:hover::before { opacity: 1; }
+
+  .icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    font-size: 22px;
+  }
+  .icon.pcr  { background: #dbeafe; color: #1d4ed8; }
+  .icon.gene { background: #fef3c7; color: #b45309; }
+
+  .tile h2 {
+    font-size: 18px;
+    margin: 0 0 6px;
+    font-weight: 600;
+  }
+  .tile p {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 16px;
+    line-height: 1.55;
+  }
+  .tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .tag {
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: #f1f5f9;
+    color: var(--muted);
+  }
+  .tile .arrow {
+    color: var(--primary);
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: gap 0.2s;
+  }
+  .tile:hover .arrow { gap: 8px; }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 24px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>生物互动学习</h1>
+    <p>挑选一个模块开始学习</p>
+  </header>
+
+  <div class="grid">
+    <a href="pcr.html" class="tile">
+      <div class="icon pcr">🧬</div>
+      <h2>PCR 互动教学</h2>
+      <p>从基本扩增到定点突变 PCR：温度选择、引物设计、循环动画与思考题。</p>
+      <div class="tags">
+        <span class="tag">变性 / 退火 / 延伸</span>
+        <span class="tag">定点突变</span>
+        <span class="tag">动画</span>
+      </div>
+      <span class="arrow">开始 →</span>
+    </a>
+
+    <a href="gene.html" class="tile">
+      <div class="icon gene">📊</div>
+      <h2>基因型概率计算器</h2>
+      <p>双位点自交 n 代的基因型分布模拟，支持人工选择、等位基因频率与杂合度。</p>
+      <div class="tags">
+        <span class="tag">两位点</span>
+        <span class="tag">自交</span>
+        <span class="tag">人工选择</span>
+      </div>
+      <span class="arrow">开始 →</span>
+    </a>
+  </div>
+</div>
+
+<footer>@xqw</footer>
+</body>
+</html>
