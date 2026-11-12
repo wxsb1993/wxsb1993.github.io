@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>第一周训练</title>
+<style>
+/* Training logbook: compact day rail above readable session cards. */
+:root {
+  --bg:#eef2f1; --surface:#f9fbfa; --card:#fff; --ink:#17201d; --muted:#62706b;
+  --line:#d4ddda; --accent:#176b52; --accent-soft:#dcece6; --warm:#b65c24;
+  --shadow:0 12px 32px rgba(24,54,45,.08);
+  --display:"Arial Narrow","PingFang SC",sans-serif;
+  --body:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#101714; --surface:#151e1a; --card:#1b2621; --ink:#edf5f1; --muted:#a0afa8;
+  --line:#35443e; --accent:#65c7a3; --accent-soft:#1d4034; --warm:#ec9a65;
+  --shadow:0 12px 32px rgba(0,0,0,.25); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#101714; --surface:#151e1a; --card:#1b2621; --ink:#edf5f1; --muted:#a0afa8;
+  --line:#35443e; --accent:#65c7a3; --accent-soft:#1d4034; --warm:#ec9a65;
+  --shadow:0 12px 32px rgba(0,0,0,.25); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));}
+button{font:inherit}
+.shell{width:min(920px,100%);margin:0 auto;padding-block:32px 64px}
+header{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:end;margin-bottom:26px}
+.eyebrow{margin:0 0 7px;color:var(--accent);font:700 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+h1{margin:0;font:800 clamp(34px,8vw,64px)/.98 var(--display);letter-spacing:-.045em;text-wrap:balance}
+.subtitle{margin:12px 0 0;color:var(--muted);max-width:58ch}
+.week-mark{font:800 52px/1 var(--display);color:var(--accent);opacity:.22}
+.day-nav{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:repeat(7,1fr);gap:6px;
+  padding-block:10px;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(12px)}
+.day-btn{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--muted);padding:10px 4px;cursor:pointer;font-weight:700}
+.day-btn span{display:block;font:600 10px/1.2 var(--mono);margin-top:3px;opacity:.75}
+.day-btn:hover,.day-btn:focus-visible{border-color:var(--accent);outline:none}
+.day-btn.active{background:var(--accent);border-color:var(--accent);color:var(--card)}
+.summary{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 24px}
+.pill{border:1px solid var(--line);background:var(--surface);padding:5px 10px;border-radius:999px;color:var(--muted);font-size:13px}
+.day{display:none}.day.active{display:block}
+.day-head{display:flex;justify-content:space-between;align-items:start;gap:16px;padding:24px 0 18px;border-bottom:2px solid var(--ink)}
+.day-head h2{margin:0;font:800 clamp(25px,5vw,38px)/1.1 var(--display);letter-spacing:-.025em}
+.day-head p{margin:7px 0 0;color:var(--muted)}
+.duration{flex:none;color:var(--accent);font:700 13px/1.3 var(--mono);text-align:right}
+.session{padding:22px 0;border-bottom:1px solid var(--line)}
+.session-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:13px}
+.session-title h3{margin:0;font-size:20px}.session-title small{color:var(--muted);font-family:var(--mono)}
+.exercise-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.exercise{min-width:0;background:var(--card);border:1px solid var(--line);padding:15px 16px;box-shadow:var(--shadow)}
+.exercise.primary{border-left:4px solid var(--accent)}
+.exercise.run{border-left:4px solid var(--warm)}
+.exercise h4{margin:0 0 8px;font-size:16px}
+.specs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.spec{background:var(--accent-soft);color:var(--accent);padding:3px 7px;border-radius:4px;font:700 12px/1.4 var(--mono)}
+.exercise p,.exercise ul{margin:7px 0 0;color:var(--muted);font-size:14px}.exercise ul{padding-left:20px}
+.note{margin-top:18px;padding:14px 16px;border-left:3px solid var(--warm);background:var(--surface);color:var(--muted);font-size:14px}
+.rules{margin-top:34px}.rules details{border-top:1px solid var(--line);padding:14px 0}.rules summary{cursor:pointer;font-weight:750}
+.rules p,.rules li{color:var(--muted);font-size:14px}.rules ul{padding-left:20px}
+footer{margin-top:35px;color:var(--muted);font-size:12px;text-align:center}
+@media(max-width:620px){.shell{padding-block:22px 48px}header{grid-template-columns:1fr}.week-mark{display:none}
+  .day-nav{gap:3px}.day-btn{font-size:13px;padding:9px 2px}.day-btn span{font-size:9px}.exercise-grid{grid-template-columns:1fr}
+  .day-head{display:block}.duration{text-align:left;margin-top:10px}.session-title{align-items:start}.session-title small{text-align:right}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<main class="shell">
+<header>
+  <div><p class="eyebrow">Strength · Run · Recover</p><h1>第一周训练</h1>
+  <p class="subtitle">每天只看当天要做的内容。重量是第一周起点，所有正式组保留 2～3 次余力。</p></div>
+  <div class="week-mark">W01</div>
+</header>
+<nav class="day-nav" aria-label="选择训练日">
+  <button class="day-btn" data-day="1">一<span>MON</span></button><button class="day-btn" data-day="2">二<span>TUE</span></button>
+  <button class="day-btn" data-day="3">三<span>WED</span></button><button class="day-btn" data-day="4">四<span>THU</span></button>
+  <button class="day-btn" data-day="5">五<span>FRI</span></button><button class="day-btn" data-day="6">六<span>SAT</span></button>
+  <button class="day-btn" data-day="0">日<span>SUN</span></button>
+</nav>
+<div class="summary"><span class="pill">主目标：引体 20</span><span class="pill">实力推 40 kg</span><span class="pill">5 km / 30 分</span></div>
+
+<section class="day" data-panel="1">
+  <div class="day-head"><div><h2>周一｜推举与引体</h2><p>早上健身房；晚上休息或散步</p></div><div class="duration">55–65 MIN</div></div>
+  <div class="session"><div class="session-title"><h3>热身</h3><small>约 10 分钟</small></div><div class="exercise-grid">
+    <article class="exercise"><h4>全身升温</h4><div class="specs"><span class="spec">4 MIN</span></div><p>单车或坡度快走。</p></article>
+    <article class="exercise"><h4>肩部激活</h4><div class="specs"><span class="spec">2 轮</span><span class="spec">休 30s</span></div><p>肩绕环前后各 15 次；弹力带拉开 15 次；肩胛俯卧撑 10 次；肩胛引体 6 次。</p></article>
+  </div></div>
+  <div class="session"><div class="session-title"><h3>主训练</h3><small>动作标准优先</small></div><div class="exercise-grid">
+    <article class="exercise primary"><h4>实力推</h4><div class="specs"><span class="spec">17.5 kg</span><span class="spec">5×3</span><span class="spec">休 2:30</span></div><p>节奏 2-0-1-1，每组约 12～15 秒。热身：10×8、15×5、17.5×2，分别休 60/90/120 秒。</p></article>
+    <article class="exercise primary"><h4>引体向上</h4><div class="specs"><span class="spec">自重 6×4</span><span class="spec">休 90s</span></div><p>节奏 1-1-3-1，每组约 24 秒。不踢腿、不摆动；后两组困难时做 4、4、4、4、3、3。</p></article>
+    <article class="exercise"><h4>坐姿绳索划船</h4><div class="specs"><span class="spec">20–30 kg</span><span class="spec">3×10</span><span class="spec">休 75s</span></div><p>节奏 2-1-3-0，每组约 60 秒。拉到上腹，身体不大幅后仰。</p></article>
+    <article class="exercise"><h4>绳索面拉</h4><div class="specs"><span class="spec">5–10 kg</span><span class="spec">3×15</span><span class="spec">休 45–60s</span></div><p>节奏 2-1-2-1，每组 75～90 秒。绳索拉向眉毛或鼻梁。</p></article>
+  </div><div class="note">晚上休息，或轻松散步 20～30 分钟。实力推出现明显后仰时降至 15 kg。</div></div>
+</section>
+
+<section class="day" data-panel="2">
+  <div class="day-head"><div><h2>周二｜腿部与间歇</h2><p>早上健身房，晚上跑步</p></div><div class="duration">AM 50–60<br>PM 43–47 MIN</div></div>
+  <div class="session"><div class="session-title"><h3>早上</h3><small>腿部保留 3 次余力</small></div><div class="exercise-grid">
+    <article class="exercise"><h4>热身</h4><div class="specs"><span class="spec">8 MIN</span></div><p>单车 3 分钟；徒手深蹲和髋铰链各 2×10；弓步压髋每侧 30 秒；提踵 20 次。</p></article>
+    <article class="exercise primary"><h4>高脚杯深蹲</h4><div class="specs"><span class="spec">12–16 kg</span><span class="spec">3×8</span><span class="spec">休 90s</span></div><p>节奏 3-1-1-0，每组约 40 秒。大腿接近平行，腰背保持中立。</p></article>
+    <article class="exercise"><h4>罗马尼亚硬拉</h4><div class="specs"><span class="spec">20–30 kg</span><span class="spec">3×8</span><span class="spec">休 90s</span></div><p>节奏 3-1-1-1，每组约 48 秒。也可用每手 10～14 kg 哑铃。</p></article>
+    <article class="exercise"><h4>保加利亚分腿蹲</h4><div class="specs"><span class="spec">自重</span><span class="spec">每侧 2×8</span><span class="spec">休 60s</span></div><p>节奏 3-1-1-0。轻松时每手 4～6 kg；换腿休 20～30 秒。</p></article>
+    <article class="exercise"><h4>俯卧撑</h4><div class="specs"><span class="spec">4×12</span><span class="spec">休 75s</span></div><p>节奏 2-1-1-0，每组约 48 秒。</p></article>
+    <article class="exercise"><h4>吊杠＋提踵</h4><div class="specs"><span class="spec">吊杠 6×15s</span><span class="spec">提踵 3×15</span></div><p>吊杠休 45 秒。提踵自重或 20～30 kg，节奏 2-1-2-1，休 45 秒。</p></article>
+  </div></div>
+  <div class="session"><div class="session-title"><h3>晚上｜间歇跑</h3><small>主观强度 7–8</small></div><div class="exercise-grid">
+    <article class="exercise run"><h4>热身</h4><div class="specs"><span class="spec">12 MIN</span></div><p>快走 2 分钟；7:45～8:30/km 慢跑 8 分钟；20 秒加速＋40 秒走，做 2 轮。</p></article>
+    <article class="exercise run"><h4>正式间歇</h4><div class="specs"><span class="spec">6 轮</span><span class="spec">共 24 MIN</span></div><p>快跑 2 分钟，参考 6:10～6:30/km；慢跑或快走 2 分钟。不要冲刺。</p></article>
+    <article class="exercise"><h4>放松</h4><div class="specs"><span class="spec">8–10 MIN</span></div><p>慢跑 5 分钟，步行 3～5 分钟，小腿和大腿前侧各拉伸 30 秒。</p></article>
+  </div><div class="note">第 4 轮后明显掉速时，下次每公里放慢 10～15 秒。</div></div>
+</section>
+
+<section class="day" data-panel="3">
+  <div class="day-head"><div><h2>周三｜负重引体</h2><p>早上健身房；晚上恢复</p></div><div class="duration">50–60 MIN</div></div>
+  <div class="session"><div class="session-title"><h3>早上</h3><small>拉力强度日</small></div><div class="exercise-grid">
+    <article class="exercise"><h4>热身</h4><div class="specs"><span class="spec">8 MIN</span></div><p>单车 3 分钟；弹力带拉开 2×15；肩胛引体 2×5；自重引体 2 次；10 kg 实力推 8 次。</p></article>
+    <article class="exercise primary"><h4>负重引体</h4><div class="specs"><span class="spec">+2.5 kg</span><span class="spec">5×3</span><span class="spec">休 2 MIN</span></div><p>节奏 1-1-3-1，每组约 18 秒。不能保持 3 秒下放时改自重 5×4。</p></article>
+    <article class="exercise primary"><h4>实力推容量</h4><div class="specs"><span class="spec">15 kg</span><span class="spec">4×6</span><span class="spec">休 2 MIN</span></div><p>节奏 2-0-1-1，每组 24～30 秒。热身 10×8、12.5×5。</p></article>
+    <article class="exercise"><h4>高位下拉</h4><div class="specs"><span class="spec">25–35 kg</span><span class="spec">3×10</span><span class="spec">休 75s</span></div><p>节奏 2-1-3-1，每组 60～70 秒，拉至锁骨附近。</p></article>
+    <article class="exercise"><h4>反向飞鸟</h4><div class="specs"><span class="spec">10–20 kg</span><span class="spec">3×12</span><span class="spec">休 45s</span></div><p>器械重量；也可每手 3～5 kg。节奏 2-1-2-0，不要耸肩。</p></article>
+    <article class="exercise"><h4>平板支撑</h4><div class="specs"><span class="spec">3×30–40s</span><span class="spec">休 45s</span></div><p>臀部与腹部同时收紧，保持正常呼吸。</p></article>
+  </div><div class="note">晚上散步 20 分钟；胸肌、背阔肌、髋屈肌每侧 2×30 秒。不加练上肢。</div></div>
+</section>
+
+<section class="day" data-panel="4">
+  <div class="day-head"><div><h2>周四｜技术与轻松跑</h2><p>早上健身房，晚上跑步</p></div><div class="duration">AM 35–45<br>PM 40–45 MIN</div></div>
+  <div class="session"><div class="session-title"><h3>早上</h3><small>不追求疲劳</small></div><div class="exercise-grid">
+    <article class="exercise primary"><h4>实力推技术组</h4><div class="specs"><span class="spec">12.5–15 kg</span><span class="spec">3×5</span><span class="spec">休 90s</span></div><p>热身 10×8。下放 2 秒、底部停 1 秒、快速推起、顶部停 1 秒。</p></article>
+    <article class="exercise primary"><h4>引体 EMOM</h4><div class="specs"><span class="spec">3 次/分钟</span><span class="spec">8 MIN</span></div><p>总计 24 次。第 6 分钟后无法标准完成时，余下每分钟改 2 次。</p></article>
+    <article class="exercise"><h4>面拉＋分腿蹲</h4><div class="specs"><span class="spec">面拉 5–10 kg</span><span class="spec">各 2–3 组</span></div><p>面拉 3×15，休 45 秒；分腿蹲自重或每手 4 kg，每侧 2×10，休 60 秒。</p></article>
+    <article class="exercise"><h4>肩袖外旋</h4><div class="specs"><span class="spec">2.5–5 kg</span><span class="spec">每侧 2×15</span><span class="spec">休 45s</span></div><p>节奏 2-1-2-0，手肘贴身。肩前侧夹痛时停止。</p></article>
+  </div></div>
+  <div class="session"><div class="session-title"><h3>晚上｜轻松跑</h3><small>能说完整短句</small></div><div class="exercise-grid">
+    <article class="exercise run"><h4>连续跑</h4><div class="specs"><span class="spec">30–35 MIN</span><span class="spec">7:30–8:20/km</span></div><p>先快走 3 分钟。保持放松，不追配速。</p></article>
+    <article class="exercise run"><h4>加速跑</h4><div class="specs"><span class="spec">4 轮</span></div><p>20 秒八成速度＋60 秒慢走；最后再慢走 3 分钟。</p></article>
+  </div><div class="note">若周二后腿部仍明显酸痛，取消加速，只轻松跑 30 分钟。</div></div>
+</section>
+
+<section class="day" data-panel="5">
+  <div class="day-head"><div><h2>周五｜自重耐力</h2><p>家中或小区，早晚任选一次</p></div><div class="duration">35–45 MIN</div></div>
+  <div class="session"><div class="session-title"><h3>训练</h3><small>不要早晚各练一次</small></div><div class="exercise-grid">
+    <article class="exercise"><h4>热身</h4><div class="specs"><span class="spec">6 MIN</span></div><p>原地快走 1 分钟；肩绕环 20 次；肩胛俯卧撑 2×8；徒手深蹲 2×10；慢波比 3 次。</p></article>
+    <article class="exercise primary"><h4>俯卧撑</h4><div class="specs"><span class="spec">5×12</span><span class="spec">总 60</span><span class="spec">休 90s</span></div><p>节奏 2-1-1-0，每组约 48 秒。</p></article>
+    <article class="exercise"><h4>吊杠</h4><div class="specs"><span class="spec">5×20s</span><span class="spec">总 100s</span><span class="spec">休 60–75s</span></div><p>使用全握，肩部轻微主动下沉。</p></article>
+    <article class="exercise"><h4>波比跳</h4><div class="specs"><span class="spec">6×6</span><span class="spec">总 36</span><span class="spec">休 60s</span></div><p>每组约 20～25 秒，保持相同动作标准和均匀节奏。</p></article>
+    <article class="exercise"><h4>鸟狗式</h4><div class="specs"><span class="spec">每侧 3×8</span><span class="spec">停 2s</span></div><p>每侧约 40 秒，换侧休 15 秒，完整组间休 45 秒。</p></article>
+  </div></div>
+</section>
+
+<section class="day" data-panel="6">
+  <div class="day-head"><div><h2>周六｜轻松长跑</h2><p>小区，早晨或傍晚</p></div><div class="duration">48 MIN TOTAL</div></div>
+  <div class="session"><div class="session-title"><h3>有氧基础</h3><small>第一周</small></div><div class="exercise-grid">
+    <article class="exercise run"><h4>跑前</h4><div class="specs"><span class="spec">快走 3 MIN</span></div><p>从步行逐渐进入慢跑，不需要额外冲刺热身。</p></article>
+    <article class="exercise run"><h4>轻松长跑</h4><div class="specs"><span class="spec">40 MIN</span><span class="spec">7:40–8:30/km</span></div><p>预计 4.7～5.2 km。连续跑吃力时，跑 8 分钟、快走 1 分钟循环。</p></article>
+    <article class="exercise"><h4>跑后</h4><div class="specs"><span class="spec">慢走 5 MIN</span></div><p>这次不测试 5 km 最好成绩。</p></article>
+  </div></div>
+</section>
+
+<section class="day" data-panel="0">
+  <div class="day-head"><div><h2>周日｜完全恢复</h2><p>让身体吸收本周训练</p></div><div class="duration">REST DAY</div></div>
+  <div class="session"><div class="exercise-grid">
+    <article class="exercise primary"><h4>今天不训练</h4><div class="specs"><span class="spec">恢复</span></div><p>不做引体、实力推、俯卧撑或跑步。可以轻松散步 20～30 分钟。</p></article>
+    <article class="exercise"><h4>恢复重点</h4><div class="specs"><span class="spec">睡眠</span><span class="spec">正常饮食</span></div><p>可以轻柔活动 5～10 分钟，不做长时间强拉伸。</p></article>
+  </div></div>
+</section>
+
+<section class="rules">
+  <details><summary>怎么看动作节奏？</summary><p>顺序是“下放－底部停顿－发力－顶部停顿”。例如 3-1-1-0 表示下放 3 秒、底部停 1 秒、起身 1 秒、顶部不停。</p></details>
+  <details><summary>重量怎么调整？</summary><ul><li>做完还能做 4 次以上：下组增加 2.5～5 kg。</li><li>还能做 2～3 次：重量合适。</li><li>动作变形或只能再做 1 次：减重 10%～20%。</li></ul></details>
+  <details><summary>什么时候停止训练？</summary><p>出现肩关节夹痛、肘部刺痛、胸痛、眩晕、异常气短，或膝盖、小腿疼痛持续超过 48 小时时停止相关训练。</p></details>
+</section>
+<footer>第一周完成后，记录实际重量、次数、剩余余力、跑步数据、疼痛与睡眠。</footer>
+</main>
+<script>
+(function(){
+  const buttons=[...document.querySelectorAll('.day-btn')];
+  const panels=[...document.querySelectorAll('.day')];
+  function show(day){
+    buttons.forEach(b=>{const on=b.dataset.day===day;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on));});
+    panels.forEach(p=>p.classList.toggle('active',p.dataset.panel===day));
+    try{localStorage.setItem('training-day',day)}catch(e){}
+  }
+  let day=String(new Date().getDay());
+  try{day=localStorage.getItem('training-day')||day}catch(e){}
+  if(!buttons.some(b=>b.dataset.day===day))day='1';
+  buttons.forEach(b=>b.addEventListener('click',()=>show(b.dataset.day)));
+  show(day);
+})();
+</script>
+</body>
+</html>
